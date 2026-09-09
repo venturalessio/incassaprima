@@ -1,10 +1,353 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IncassaPrima — Solleciti di pagamento senza caos</title><meta name="description" content="Scadenzario gratuito per fatture e solleciti di pagamento. Organizza le scadenze e prepara email corrette."><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2563eb"><link rel="apple-touch-icon" href="icons/icon-192.png"><link rel="stylesheet" href="styles.css"></head><body>
-<header class="nav"><a class="brand" href="./"><span>€</span> IncassaPrima</a><nav><a href="#come-funziona">Come funziona</a><a href="#faq">FAQ</a><a class="btn small" href="app/">Apri l'app gratis</a></nav></header>
-<main><section class="hero"><div><p class="eyebrow">SCADENZARIO E SOLLECITI</p><h1>Sai quali fatture sollecitare <em>oggi?</em></h1><p class="subtitle">IncassaPrima organizza le scadenze e prepara un sollecito con cliente, numero fattura, importo e tono già corretti.</p><div class="cta"><a class="btn" href="app/">Prova gratis</a><a class="textlink" href="#come-funziona">Guarda come funziona ↓</a></div><p class="fine">Gratis · Nessuna carta di credito · Nessun gestionale da cambiare</p></div><div class="hero-card"><div class="card-top"><span>Scadenze da sollecitare</span><b>Oggi</b></div><div class="invoice red"><div><strong>Rossi Impianti SRL</strong><small>Fattura 24/2026 · 8 giorni di ritardo</small></div><b>€2.500,00</b></div><div class="invoice amber"><div><strong>Studio Bianchi</strong><small>Fattura 17/2026 · Scade tra 2 giorni</small></div><b>€780,00</b></div><div class="invoice blue"><div><strong>Alfa Servizi</strong><small>Fattura 31/2026 · Scade tra 12 giorni</small></div><b>€1.250,50</b></div><div class="card-action">✦ Sollecito pronto in un clic</div></div></section>
-<section class="problem"><p class="eyebrow">IL PROBLEMA</p><h2>Le fatture non pagate non sono solo una seccatura.</h2><div class="three"><article><b>Tempo perso</b><p>Cercare dati tra Excel, email e promemoria richiede tempo ogni settimana.</p></article><article><b>Follow-up dimenticati</b><p>Sollecitare tardi rende più difficile ottenere una risposta e un pagamento.</p></article><article><b>Liquidità ferma</b><p>Ogni incasso trascurato è denaro che resta nelle tasche di qualcun altro.</p></article></div></section>
-<section id="come-funziona"><p class="eyebrow">COME FUNZIONA</p><h2>Tre passaggi, zero caos.</h2><div class="steps"><article><i>1</i><h3>Inserisci la scadenza</h3><p>Cliente, numero fattura, importo e data. Supporta il formato italiano, ad esempio 2.500,00.</p></article><article><i>2</i><h3>Vedi le priorità</h3><p>Le fatture vengono classificate come in scadenza, scadute o pagate.</p></article><article><i>3</i><h3>Prepara il sollecito</h3><p>Il sistema suggerisce il tono e completa la mail con i dati della fattura.</p></article></div><div class="center"><a class="btn" href="app/">Apri IncassaPrima gratis</a></div></section>
-<section class="features"><div><p class="eyebrow">VERSIONE GRATUITA</p><h2>Abbastanza semplice da usare. Abbastanza utile da non dimenticare.</h2><ul><li>Scadenze e stato degli incassi</li><li>Tre modelli di sollecito</li><li>Suggerimento automatico del tono</li><li>Importi italiani gestiti correttamente</li><li>Export e import CSV</li><li>Dati salvati nel browser</li></ul></div><aside><p class="eyebrow">IN ARRIVO NEL PRO</p><h3>Quando il follow-up deve lavorare da solo.</h3><p>Backup cloud, promemoria automatici, storico invii, import Excel guidato, accesso multi-dispositivo e gestione per più aziende.</p><a href="mailto:ciao@incassaprima.example?subject=Lista%20attesa%20IncassaPrima%20Pro">Voglio testare Pro →</a></aside></section>
-<section id="faq" class="faq"><p class="eyebrow">FAQ</p><h2>Domande dirette, risposte dirette.</h2><details><summary>È davvero gratuito?</summary><p>Sì. La versione iniziale è gratuita e non richiede carta di credito.</p></details><details><summary>Devo creare un account?</summary><p>No. In questa versione i dati rimangono nel browser del dispositivo.</p></details><details><summary>Invia automaticamente le email?</summary><p>No. Prepara il testo e può aprire il client email; l'invio resta sotto il tuo controllo.</p></details><details><summary>Sostituisce il gestionale o la fatturazione elettronica?</summary><p>No. È uno strumento di controllo e sollecito, non un software contabile né di conservazione fiscale.</p></details><details><summary>Posso usarlo da telefono?</summary><p>Sì. Aprilo nel browser; da iPhone usa Safari e “Aggiungi a Home”, da Android scegli “Installa app”.</p></details></section>
-<section class="final"><h2>Non lasciare gli incassi alla memoria.</h2><p>Apri la versione gratuita e verifica in due minuti se ti semplifica il follow-up.</p><a class="btn light" href="app/">Prova IncassaPrima</a></section></main>
-<footer><span>© 2026 IncassaPrima</span><a href="privacy.html">Privacy</a><a href="mailto:ciao@incassaprima.example">Contatti</a></footer></body></html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IncassaPrima — Tieni sotto controllo gli incassi</title>
+  <meta name="description" content="Scadenzario gratuito per controllare fatture, priorità e solleciti di pagamento.">
+  <meta name="theme-color" content="#0f3d87">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="logo" href="./" aria-label="IncassaPrima home">
+      <span class="logo-mark">€</span>
+      <span>IncassaPrima</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Navigazione principale">
+      <a href="#come-funziona">Come funziona</a>
+      <a href="#gratis">Piani</a>
+      <a href="#faq">FAQ</a>
+      <a class="button button-small button-outline" href="app/">Apri gratis</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">SCADENZARIO PER PROFESSIONISTI E PICCOLE IMPRESE</p>
+
+        <h1>
+          Non rincorrere più le fatture.<br>
+          <span>Tieni sotto controllo gli incassi.</span>
+        </h1>
+
+        <p class="hero-description">
+          IncassaPrima mette ordine tra scadenze e ritardi, indica quali clienti
+          contattare oggi e prepara il sollecito con importo, fattura e data già corretti.
+        </p>
+
+        <div class="hero-actions">
+          <a class="button" href="app/">Apri lo scadenzario gratis</a>
+          <a class="button-link" href="#come-funziona">Guarda come funziona <span>↓</span></a>
+        </div>
+
+        <p class="trust-line">
+          Gratis · Nessuna carta di credito · Nessun gestionale da cambiare
+        </p>
+      </div>
+
+      <div class="hero-visual" aria-label="Esempio dello scadenzario IncassaPrima">
+        <div class="browser">
+          <div class="browser-top">
+            <span class="dot red-dot"></span>
+            <span class="dot yellow-dot"></span>
+            <span class="dot green-dot"></span>
+            <span class="browser-title">IncassaPrima · Scadenze</span>
+          </div>
+
+          <div class="dashboard">
+            <div class="dashboard-head">
+              <div>
+                <strong>Buongiorno Alessio</strong>
+                <small>Ecco le priorità di oggi</small>
+              </div>
+              <span class="today">Oggi</span>
+            </div>
+
+            <div class="dashboard-kpis">
+              <div>
+                <span>Da incassare</span>
+                <strong>€ 8.430</strong>
+              </div>
+              <div class="critical-kpi">
+                <span>Scaduto</span>
+                <strong>€ 3.280</strong>
+              </div>
+            </div>
+
+            <p class="dashboard-label">DA SOLLECITARE</p>
+
+            <div class="invoice-card overdue-card">
+              <div>
+                <strong>Rossi Impianti SRL</strong>
+                <small>Fattura 24/2026 · Scaduta da 8 giorni</small>
+              </div>
+              <div class="invoice-value">
+                <strong>€ 2.500,00</strong>
+                <span>Prepara sollecito →</span>
+              </div>
+            </div>
+
+            <div class="invoice-card">
+              <div>
+                <strong>Studio Bianchi</strong>
+                <small>Fattura 17/2026 · Scaduta da 3 giorni</small>
+              </div>
+              <div class="invoice-value">
+                <strong>€ 780,00</strong>
+                <span>Prepara sollecito →</span>
+              </div>
+            </div>
+
+            <div class="invoice-card neutral-card">
+              <div>
+                <strong>Alfa Servizi</strong>
+                <small>Fattura 31/2026 · Scade tra 2 giorni</small>
+              </div>
+              <div class="invoice-value">
+                <strong>€ 1.250,50</strong>
+                <span>Promemoria →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mail-preview">
+          <div class="mail-preview-head">
+            <span>✦</span>
+            <strong>Sollecito pronto</strong>
+          </div>
+          <p><strong>Oggetto:</strong> Promemoria pagamento fattura 24/2026</p>
+          <p>
+            Buongiorno Rossi Impianti SRL,<br><br>
+            la fattura di <strong>€ 2.500,00</strong>, scaduta il 30/08/2026,
+            risulta da saldare.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="pain-section">
+      <div class="section-intro">
+        <p class="eyebrow">IL PROBLEMA</p>
+        <h2>Se gli incassi vivono in Excel, email e memoria, qualcosa sfugge.</h2>
+        <p>
+          Il problema non è emettere una fattura. Il problema è ricordarsi di
+          controllarla, decidere quando scrivere e non sbagliare dati nel sollecito.
+        </p>
+      </div>
+
+      <div class="pain-grid">
+        <article>
+          <div class="icon-box">01</div>
+          <h3>Scadenze disperse</h3>
+          <p>File, note, email e chat non sono un sistema di controllo degli incassi.</p>
+        </article>
+
+        <article>
+          <div class="icon-box">02</div>
+          <h3>Solleciti rimandati</h3>
+          <p>Ogni promemoria dimenticato allunga il tempo di incasso e aumenta l’imbarazzo.</p>
+        </article>
+
+        <article>
+          <div class="icon-box">03</div>
+          <h3>Dati copiati a mano</h3>
+          <p>Numero fattura, importo e scadenza: basta un errore per sembrare poco professionali.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="come-funziona" class="how-section">
+      <div class="section-intro centered">
+        <p class="eyebrow">COME FUNZIONA</p>
+        <h2>Tre passaggi. Una routine più ordinata.</h2>
+      </div>
+
+      <div class="steps">
+        <article>
+          <span class="step-number">1</span>
+          <h3>Inserisci la scadenza</h3>
+          <p>Cliente, numero fattura, importo e data. Anche gli importi italiani come 2.500,00 vengono interpretati correttamente.</p>
+        </article>
+
+        <article>
+          <span class="step-number">2</span>
+          <h3>Vedi subito le priorità</h3>
+          <p>Le fatture vengono ordinate e classificate: da incassare, in scadenza, scadute o pagate.</p>
+        </article>
+
+        <article>
+          <span class="step-number">3</span>
+          <h3>Prepara il sollecito</h3>
+          <p>Il tono consigliato cambia in base ai giorni di ritardo. Tu controlli e invii quando vuoi.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="feature-section">
+      <div class="feature-copy">
+        <p class="eyebrow">LA FUNZIONE CHE CONTA</p>
+        <h2>Il sollecito non deve richiedere dieci minuti e tre controlli.</h2>
+        <p>
+          Seleziona la fattura: IncassaPrima completa il testo con cliente,
+          numero, importo e scadenza. Ti propone un promemoria cortese,
+          un primo sollecito o un secondo sollecito in base al ritardo.
+        </p>
+
+        <ul class="check-list">
+          <li>Cliente, importo e fattura della riga corretta</li>
+          <li>Tre modelli pronti e modificabili</li>
+          <li>Tono suggerito, invio sempre sotto il tuo controllo</li>
+          <li>Testo copiabile o email precompilata</li>
+        </ul>
+
+        <a class="button" href="app/">Prova con una scadenza fittizia</a>
+      </div>
+
+      <div class="email-card">
+        <div class="email-top">
+          <span class="email-label">EMAIL PRONTA</span>
+          <span class="ready-status">● Pronta da inviare</span>
+        </div>
+
+        <div class="email-line">
+          <span>A:</span>
+          <strong>amministrazione@rossiimpianti.it</strong>
+        </div>
+
+        <div class="email-line">
+          <span>Oggetto:</span>
+          <strong>Promemoria pagamento fattura 24/2026</strong>
+        </div>
+
+        <div class="email-body">
+          <p>Buongiorno Rossi Impianti SRL,</p>
+          <p>
+            con la presente ricordiamo che la fattura n. <strong>24/2026</strong>,
+            dell’importo di <strong>€ 2.500,00</strong>, con scadenza
+            <strong>30/08/2026</strong>, risulta ancora da saldare.
+          </p>
+          <p>
+            Qualora il pagamento fosse già stato effettuato, ti chiediamo di ignorare
+            questa comunicazione. Diversamente, puoi indicarci la data prevista di pagamento?
+          </p>
+          <p>Grazie per la collaborazione.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="gratis" class="plans-section">
+      <div class="section-intro centered">
+        <p class="eyebrow">OGGI GRATIS, DOMANI PIÙ POTENTE</p>
+        <h2>Inizia senza registrazione. Decidi dopo se ti serve di più.</h2>
+      </div>
+
+      <div class="plans-grid">
+        <article class="plan-card free-plan">
+          <p class="plan-name">Free</p>
+          <p class="price">€0 <span>per sempre</span></p>
+          <p class="plan-description">Per mettere ordine nelle scadenze senza cambiare abitudini.</p>
+
+          <ul>
+            <li>Scadenze e stati di pagamento</li>
+            <li>Tre modelli di sollecito</li>
+            <li>Importi in formato italiano</li>
+            <li>Import/export CSV</li>
+            <li>Dati salvati nel browser</li>
+          </ul>
+
+          <a class="button button-outline-dark" href="app/">Usa gratis</a>
+        </article>
+
+        <article class="plan-card pro-plan">
+          <div class="coming-soon">IN ARRIVO</div>
+          <p class="plan-name">Pro</p>
+          <p class="price">Da €9 <span>al mese</span></p>
+          <p class="plan-description">Per chi vuole automatizzare il controllo degli incassi.</p>
+
+          <ul>
+            <li>Backup cloud e accesso multi-dispositivo</li>
+            <li>Promemoria automatici via email</li>
+            <li>Storico di solleciti e risposte</li>
+            <li>Import Excel guidato</li>
+            <li>Dashboard clienti e ritardi</li>
+          </ul>
+
+          <a class="button button-light" href="mailto:INSERISCI-LA-TUA-EMAIL?subject=Voglio%20testare%20IncassaPrima%20Pro">
+            Voglio testare Pro
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <section id="faq" class="faq-section">
+      <div class="section-intro">
+        <p class="eyebrow">FAQ</p>
+        <h2>Domande normali. Risposte senza fumo.</h2>
+      </div>
+
+      <div class="faq-list">
+        <details>
+          <summary>È davvero gratuito?</summary>
+          <p>Sì. La versione iniziale è gratuita e non richiede carta di credito.</p>
+        </details>
+
+        <details>
+          <summary>Devo creare un account?</summary>
+          <p>No. Nella versione gratuita le scadenze rimangono salvate solo nel browser del dispositivo che stai utilizzando.</p>
+        </details>
+
+        <details>
+          <summary>IncassaPrima invia automaticamente le email?</summary>
+          <p>No. Prepara il testo e può aprire il client di posta con oggetto e corpo già compilati. L’invio resta sotto il tuo controllo.</p>
+        </details>
+
+        <details>
+          <summary>Sostituisce la fatturazione elettronica o il gestionale?</summary>
+          <p>No. È uno strumento per monitorare incassi e preparare solleciti. Non svolge contabilità, fatturazione elettronica o conservazione fiscale.</p>
+        </details>
+
+        <details>
+          <summary>Posso usarlo dal telefono?</summary>
+          <p>Sì. Aprilo dal browser; su iPhone puoi usare Safari e “Aggiungi a Home”, su Android Chrome e “Installa app”.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <p class="eyebrow">PROVA LA VERSIONE GRATUITA</p>
+      <h2>Gli incassi non devono dipendere dalla tua memoria.</h2>
+      <p>Apri lo scadenzario e prova il flusso con tre fatture fittizie.</p>
+      <a class="button button-light" href="app/">Apri IncassaPrima gratis</a>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <a class="logo" href="./">
+        <span class="logo-mark">€</span>
+        <span>IncassaPrima</span>
+      </a>
+      <p>Scadenzario e solleciti per professionisti e piccole imprese.</p>
+    </div>
+
+    <div class="footer-links">
+      <a href="app/">Apri l’app</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="mailto:INSERISCI-LA-TUA-EMAIL">Contatti</a>
+    </div>
+  </footer>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+  </script>
+</body>
+</html>
