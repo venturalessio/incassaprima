@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://dxlmtihwvcqstrxwzapj.supabase.co/rest/v1/';
+  const SUPABASE_URL = 'https://dxlmtihwvcqstrxwzapj.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ibxT_9Bc7rUznsufgMS7ow_u5ydz5fa';
   const LOCAL_KEY = 'incassaprima_pwa_v1';
 
