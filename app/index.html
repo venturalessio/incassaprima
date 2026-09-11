@@ -14,6 +14,67 @@
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     .app{max-width:1180px;margin:auto;padding:26px 18px 60px}.back{display:inline-block;margin-bottom:14px;color:var(--blue);font-size:14px;font-weight:700}.apphead{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.apphead h1{font-size:30px;margin:0 0 5px;font-family:inherit;letter-spacing:0}.hint{margin:0;color:var(--muted);font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.app button,.filelabel{border:0;border-radius:8px;padding:10px 13px;font-weight:650;cursor:pointer;background:var(--blue);color:white;font-size:14px}.secondary{background:#e8eefc!important;color:#1743a2!important}.danger{background:#fee2e2!important;color:#991b1b!important}.violet{background:#ede9fe!important;color:#5b21b6!important}.filelabel input{display:none}.sync-status{display:inline-block;margin-top:10px;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:650;background:#e8eefc;color:#1743a2}.sync-status.success{background:#d1fae5;color:#047857}.sync-status.warning{background:#ffedd5;color:#b45309}.sync-status.error{background:#fee2e2;color:#b91c1c}
     .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.stat,.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px #11182708}.stat{padding:16px}.stat span{display:block;color:var(--muted);font-size:13px}.stat strong{display:block;font-size:24px;margin-top:6px}.panel{padding:18px;margin-top:16px}.panel h2{font-size:18px;margin:0 0 14px}.formgrid{display:grid;grid-template-columns:1.25fr 1.05fr .82fr .82fr .9fr;gap:10px;align-items:start}.field{display:flex;flex-direction:column;gap:5px}.field label{color:var(--muted);font-size:12px;font-weight:650}.field input,.field select,.field textarea{width:100%;border:1px solid #ccd5e1;border-radius:8px;padding:10px;background:white;font:inherit;color:var(--ink)}.field textarea{min-height:112px;resize:vertical}.smallhint{margin:0;color:var(--muted);font-size:11px}.toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.filters input,.filters select{border:1px solid #ccd5e1;border-radius:8px;padding:9px;background:white;font:inherit}.filters input{width:230px}table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--muted);font-size:12px;padding:10px 8px;border-bottom:1px solid var(--line)}td{padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:top}.amount{font-variant-numeric:tabular-nums;font-weight:700}.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.due{background:#ffedd5;color:var(--amber)}.overdue{background:#fee2e2;color:var(--red)}.paid{background:#d1fae5;color:var(--green)}.upcoming{background:#dbeafe;color:#1d4ed8}.promised{background:#ede9fe;color:#6d28d9}.disputed{background:#f3f4f6;color:#4b5563}.paused{background:#fef3c7;color:#92400e}.rowactions{display:flex;gap:6px;flex-wrap:wrap}.app button.small{padding:6px 8px;font-size:12px}.empty{padding:26px;color:var(--muted);text-align:center}.modelgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.modelcard{border:1px solid var(--line);border-radius:10px;padding:13px}.modelcard h3{font-size:15px;margin:0 0 4px}.modelcard p{font-size:12px;color:var(--muted);margin:0 0 10px}.modalback{position:fixed;inset:0;background:#11182788;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:14px;padding:20px;box-shadow:0 20px 60px #0006}.modalhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.modal h2{margin:0;font-size:20px}.close{background:#eef2f7!important;color:#374151!important;font-size:20px!important;line-height:20px;padding:7px 10px!important}.recommendation{background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:9px;padding:10px 12px;margin:14px 0}.modal .field{margin-top:12px}.modalactions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:16px 0 6px}.auth-tabs button{background:#eef2f7!important;color:#374151!important}.auth-tabs button.active{background:var(--blue)!important;color:white!important}.auth-form{display:none}.auth-form.active{display:block}.auth-note{margin-top:15px;padding:10px 12px;background:#f8fafc;border-radius:8px;color:var(--muted);font-size:12px;line-height:1.45}.toast{position:fixed;right:18px;bottom:18px;background:#172033;color:white;padding:12px 15px;border-radius:9px;display:none;box-shadow:0 8px 28px #0003;z-index:20}.footer{margin-top:18px;color:var(--muted);font-size:12px}
+    .history-count {
+  margin: 16px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.history-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.history-meta {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-item details {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.history-item summary {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.history-message {
+  margin-top: 9px;
+  padding: 11px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.history-message p {
+  margin: 0 0 9px;
+}
+
+.history-message p:last-child {
+  margin-bottom: 0;
+}
     @media(max-width:900px){.apphead{display:block}.actions{margin-top:13px;justify-content:flex-start}.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:repeat(2,1fr)}.formgrid .field:first-child{grid-column:span 2}.modelgrid{grid-template-columns:1fr}.toolbar{display:block}.filters{margin-top:10px}}
     @media(max-width:620px){.app{padding:22px 14px 50px}.formgrid{grid-template-columns:1fr}.formgrid .field:first-child{grid-column:auto}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:20px}table thead{display:none}table,tbody,tr,td{display:block}tr{border-bottom:1px solid var(--line);padding:8px 0}td{border:0;padding:4px 0}.filters input,.filters select{width:100%}.modalback{padding:10px}.modal{padding:16px}}
   </style>
@@ -124,7 +185,25 @@
     <div class="modalactions"><button type="button" class="secondary" id="copyBtn">Copia testo</button><button type="button" id="emailBtn">Apri email</button></div>
   </div>
 </div>
+<div id="historyBack" class="modalback">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="modalhead">
+      <div>
+        <h2 id="historyTitle">Storico solleciti</h2>
+        <p class="hint" id="historySubtitle"></p>
+      </div>
 
+      <button
+        type="button"
+        id="closeHistoryBtn"
+        class="close"
+        aria-label="Chiudi"
+      >×</button>
+    </div>
+
+    <div id="historyContent"></div>
+  </div>
+</div>
 <div id="authBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="modalhead"><div><h2 id="authTitle">Accedi a IncassaPrima Pro</h2><p class="hint">Accedi per salvare scadenze e clienti nel cloud.</p></div><button type="button" id="closeAuthBtn" class="close" aria-label="Chiudi">×</button></div>
