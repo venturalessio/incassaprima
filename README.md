@@ -14,8 +14,8 @@
 3. Carica **tutto il contenuto di questa cartella**, mantenendo invariati cartelle e nomi.
 4. Nel repository: `Settings` → `Pages`.
 5. In “Build and deployment”: Source `Deploy from a branch`; Branch `main`; Folder `/(root)`; poi `Save`.
-6. Dopo 1–3 minuti apri `https://TUO-USERNAME.github.io/incassaprima/`.
-7. L'app è a `https://TUO-USERNAME.github.io/incassaprima/app/`.
+6. Dopo 1–3 minuti apri `https://venturalessio.github.io/incassaprima/`.
+7. L'app è a `https://venturalessio.github.io/incassaprima/app/`.
 
 ## Test prima del lancio
 - Inserisci `2.500`, `2.500,00`, `1.250,50`; devono diventare rispettivamente €2.500,00 e €1.250,50.
