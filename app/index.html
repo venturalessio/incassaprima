@@ -123,8 +123,173 @@
 .promise-field.visible {
   display: flex;
 }
+    .customer-toolbar {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0;
+}
+
+.customer-toolbar input {
+  width: 100%;
+  border: 1px solid #ccd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+}
+
+.customer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.customer-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 0.8fr 0.6fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.customer-row strong {
+  display: block;
+}
+
+.customer-row small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.customer-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.customer-metric b {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.customer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.customer-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.customer-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.customer-summary div {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f8fafc;
+}
+
+.customer-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.customer-summary b {
+  display: block;
+  margin-top: 3px;
+  font-size: 16px;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #fde68a;
+  border-radius: 9px;
+  background: #fffbeb;
+}
+
+.toggle-row input {
+  width: auto;
+  margin-top: 3px;
+}
+
+.toggle-row strong {
+  display: block;
+  font-size: 13px;
+}
+
+.toggle-row span {
+  display: block;
+  margin-top: 2px;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.customer-invoice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.customer-invoice {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.customer-invoice small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.customer-empty {
+  padding: 25px;
+  text-align: center;
+  color: var(--muted);
+}
     @media(max-width:900px){.apphead{display:block}.actions{margin-top:13px;justify-content:flex-start}.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:repeat(2,1fr)}.formgrid .field:first-child{grid-column:span 2}.modelgrid{grid-template-columns:1fr}.toolbar{display:block}.filters{margin-top:10px}}
     @media(max-width:620px){.app{padding:22px 14px 50px}.formgrid{grid-template-columns:1fr}.formgrid .field:first-child{grid-column:auto}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:20px}table thead{display:none}table,tbody,tr,td{display:block}tr{border-bottom:1px solid var(--line);padding:8px 0}td{border:0;padding:4px 0}.filters input,.filters select{width:100%}.modalback{padding:10px}.modal{padding:16px}}
+    .customer-row {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.customer-actions {
+  justify-content: flex-start;
+}
+
+.customer-summary {
+  grid-template-columns: 1fr 1fr;
+}
+
+.customer-form-grid {
+  grid-template-columns: 1fr;
+}
   </style>
 </head>
 <body>
@@ -234,7 +399,102 @@
     <div class="modalactions"><button type="button" class="secondary" id="copyBtn">Copia testo</button><button type="button" id="emailBtn">Apri email</button></div>
   </div>
 </div>
-<div id="statusBack" class="modalback">
+<div id="customersBack" class="modalback">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customersTitle">
+    <div class="modalhead">
+      <div>
+        <h2 id="customersTitle">Clienti</h2>
+        <p class="hint">Esposizione, scaduti e gestione solleciti per cliente.</p>
+      </div>
+
+      <button
+        type="button"
+        id="closeCustomersBtn"
+        class="close"
+        aria-label="Chiudi"
+      >×</button>
+    </div>
+
+    <div class="customer-toolbar">
+      <input id="customerSearch" placeholder="Cerca cliente, email o PEC">
+      <button type="button" id="newCustomerBtn" class="secondary">Nuovo cliente</button>
+    </div>
+
+    <div id="customersContent"></div>
+  </div>
+</div>
+
+<div id="customerEditBack" class="modalback">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customerEditTitle">
+    <div class="modalhead">
+      <div>
+        <h2 id="customerEditTitle">Cliente</h2>
+        <p class="hint" id="customerEditSubtitle"></p>
+      </div>
+
+      <button
+        type="button"
+        id="closeCustomerEditBtn"
+        class="close"
+        aria-label="Chiudi"
+      >×</button>
+    </div>
+
+    <div id="customerSummary" class="customer-summary"></div>
+
+    <div class="customer-form-grid">
+      <div class="field">
+        <label for="editCustomerName">Ragione sociale / Nome</label>
+        <input id="editCustomerName" placeholder="es. Rossi Impianti SRL">
+      </div>
+
+      <div class="field">
+        <label for="editCustomerEmail">Email</label>
+        <input id="editCustomerEmail" type="email" placeholder="amministrazione@cliente.it">
+      </div>
+
+      <div class="field">
+        <label for="editCustomerPec">PEC</label>
+        <input id="editCustomerPec" type="email" placeholder="cliente@pec.it">
+      </div>
+
+      <div class="field">
+        <label for="editCustomerPhone">Telefono</label>
+        <input id="editCustomerPhone" type="tel" placeholder="es. +39 051 000000">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:10px">
+      <label for="editCustomerNotes">Note interne</label>
+      <textarea
+        id="editCustomerNotes"
+        placeholder="es. Referente, accordi di pagamento, note commerciali…"
+      ></textarea>
+    </div>
+
+    <label class="toggle-row">
+      <input id="editCustomerPaused" type="checkbox">
+      <span>
+        <strong>Sospendi solleciti automatici per questo cliente</strong>
+        <span>
+          Blocca le future automazioni. I solleciti manuali restano possibili
+          e sotto il tuo controllo.
+        </span>
+      </span>
+    </label>
+
+    <div class="modalactions">
+      <button type="button" class="secondary" id="cancelCustomerEditBtn">Annulla</button>
+      <button type="button" id="saveCustomerBtn">Salva cliente</button>
+    </div>
+
+    <div style="margin-top:22px">
+      <h3 style="font-size:15px;margin:0 0 8px">Fatture del cliente</h3>
+      <div id="customerInvoices"></div>
+    </div>
+  </div>
+</div>
+  <div id="statusBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statusTitle">
     <div class="modalhead">
       <div>
