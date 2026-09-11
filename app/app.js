@@ -637,8 +637,8 @@ Cordiali saluti.`
       toast('Prima configura Project URL e Publishable key nel file app.js.');
       return;
     }
-    const email = $('authEmail').value.trim();
-    const password = $('authPassword').value;
+    const email = $('signupEmail').value.trim();
+    const password = $('signupPassword').value;
     const organizationName = $('organizationName').value.trim();
 
     if (!email || !password || password.length < 8) {
