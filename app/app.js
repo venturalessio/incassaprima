@@ -7,8 +7,8 @@
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'INCOLLA_QUI_IL_PROJECT_URL';
-  const SUPABASE_PUBLISHABLE_KEY = 'INCOLLA_QUI_LA_PUBLISHABLE_KEY';
+  const SUPABASE_URL = 'https://dxlmtihwvcqstrxwzapj.supabase.co/rest/v1/';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ibxT_9Bc7rUznsufgMS7ow_u5ydz5fa';
   const LOCAL_KEY = 'incassaprima_pwa_v1';
 
   const $ = (id) => document.getElementById(id);
