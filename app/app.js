@@ -167,7 +167,42 @@ Cordiali saluti.`
       upcoming: 'Da incassare'
     }[status] || status;
   }
+function getCustomerForInvoice(invoice) {
+  if (!invoice || !invoice.customer_id) return null;
 
+  return state.customers.find(
+    (customer) => customer.id === invoice.customer_id
+  ) || null;
+}
+
+function isEligibleForAutomaticReminder(invoice) {
+  const customer = getCustomerForInvoice(invoice);
+  const status = invoice.status || 'open';
+  const todayIso = today();
+
+  if (!invoice || invoice.source !== 'cloud') return false;
+  if (!customer || customer.reminders_paused) return false;
+  if (['paid', 'disputed', 'paused'].includes(status)) return false;
+
+  if (
+    status === 'promised' &&
+    invoice.promised_payment_date &&
+    invoice.promised_payment_date >= todayIso
+  ) {
+    return false;
+  }
+
+  return (
+    status === 'open' ||
+    (
+      status === 'promised' &&
+      (
+        !invoice.promised_payment_date ||
+        invoice.promised_payment_date < todayIso
+      )
+    )
+  );
+}
   function recommendedModel(invoice) {
     const days = diffDays(invoice);
     if (days <= 2) return 'courtesy';
@@ -394,9 +429,18 @@ function updateAccountUi() {
             const customer = invoice.customer_name || invoice.customer || 'Cliente';
             const number = invoice.invoice_number || invoice.number || 'Senza numero';
             const email = invoice.customer_email || invoice.email || '';
+            const customerRecord = getCustomerForInvoice(invoice);
+
+const autoPaused = Boolean(
+  customerRecord && customerRecord.reminders_paused
+);
+
+const autoPausedNote = autoPaused
+  ? '<br><small style="color:#b45309;font-weight:700">⚠ Auto-solleciti sospesi per cliente</small>'
+  : '';
             return `
               <tr>
-                <td><strong>${escapeHtml(customer)}</strong><br><small>${escapeHtml(number)}${email ? ` · ${escapeHtml(email)}` : ''}</small></td>
+                <td><strong>${escapeHtml(customer)}</strong><br><small>${escapeHtml(number)}${email ? ` · ${escapeHtml(email)}` : ''}</small>${autoPausedNote}</td>
                 <td>${dateIt(invoice.due_date || invoice.due)}</td>
                 <td class="amount">${amount}</td>
                 <td><span class="badge ${status}">${statusLabel(status)}</span></td>
@@ -656,9 +700,23 @@ async function saveInvoiceStatus() {
 
     $('modalTitle').textContent = `Sollecito — ${customer}`;
     $('modalSubtitle').textContent = `Fattura ${number} · ${amount} · scadenza ${dateIt(invoice.due_date || invoice.due)}`;
-    $('recommendation').textContent = `${recommendationText(invoice)} Puoi scegliere un modello diverso prima dell’invio.`;
-    $('modalBack').style.display = 'flex';
-    chooseModel(key);
+    const customerRecord = getCustomerForInvoice(invoice);
+
+const autoPaused = Boolean(
+  customerRecord && customerRecord.reminders_paused
+);
+
+const manualWarning = autoPaused
+  ? ' ⚠ Attenzione: gli auto-solleciti sono sospesi per questo cliente. Stai preparando un sollecito manuale, che rimane consentito e verrà registrato nello storico.'
+  : '';
+
+$('recommendation').textContent =
+  `${recommendationText(invoice)} Puoi scegliere un modello diverso prima dell’invio.${manualWarning}`;
+
+$('recommendation').classList.toggle('manual-warning', autoPaused);
+
+$('modalBack').style.display = 'flex';
+chooseModel(key);
   }
 
   function closeReminder() {
