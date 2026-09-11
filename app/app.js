@@ -19,6 +19,7 @@
     customers: [],
     invoices: [],
     activeInvoice: null,
+    statusInvoice: null,
     localInvoices: []
   };
 
@@ -522,47 +523,106 @@ function updateAccountUi() {
     return source.find((invoice) => String(invoice.id) === String(id));
   }
 
-  async function changeStatus(invoice) {
-    const current = invoiceStatus(invoice);
-    const choice = window.prompt(
-      'Imposta stato: open, paid, promised, disputed, paused',
-      current === 'overdue' || current === 'due' || current === 'upcoming' ? 'open' : current
-    );
-    if (!choice) return;
+  function openStatusModal(invoice) {
+  state.statusInvoice = invoice;
 
-    const allowed = ['open', 'paid', 'promised', 'disputed', 'paused'];
-    const status = choice.trim().toLowerCase();
-    if (!allowed.includes(status)) {
-      toast('Stato non valido. Usa: open, paid, promised, disputed o paused.');
-      return;
-    }
+  const current = invoice.status &&
+    ['open', 'paid', 'promised', 'disputed', 'paused'].includes(invoice.status)
+    ? invoice.status
+    : 'open';
 
-    if (!state.session) {
-      const local = state.localInvoices.find((item) => String(item.id) === String(invoice.id));
-      if (!local) return;
-      local.paid = status === 'paid';
-      local.status = status;
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
-      render();
-      toast('Stato aggiornato in locale.');
-      return;
-    }
+  $('statusTitle').textContent = 'Aggiorna stato fattura';
 
-    const update = {
-      status,
-      paid_at: status === 'paid' ? new Date().toISOString() : null,
-      promised_payment_date: status === 'promised' ? window.prompt('Data promessa pagamento (AAAA-MM-GG), facoltativa:') || null : null
-    };
+  $('statusSubtitle').textContent =
+    `Fattura ${invoice.invoice_number || invoice.number || 'senza numero'} · ${
+      invoice.amount_cents !== undefined
+        ? moneyFromCents(invoice.amount_cents)
+        : money(invoice.amount)
+    }`;
 
-    const { error } = await state.supabase.from('invoices').update(update).eq('id', invoice.id);
-    if (error) {
-      toast(`Errore aggiornamento: ${error.message}`);
-      return;
-    }
+  const selected = document.querySelector(
+    `input[name="invoiceStatus"][value="${current}"]`
+  );
 
-    await loadCloudData();
-    toast('Stato fattura aggiornato.');
+  if (selected) selected.checked = true;
+
+  $('promiseDate').value = invoice.promised_payment_date || '';
+  $('promiseField').classList.toggle('visible', current === 'promised');
+  $('statusBack').style.display = 'flex';
+}
+
+function closeStatusModal() {
+  state.statusInvoice = null;
+  $('statusBack').style.display = 'none';
+}
+
+function selectedInvoiceStatus() {
+  const selected = document.querySelector(
+    'input[name="invoiceStatus"]:checked'
+  );
+
+  return selected ? selected.value : null;
+}
+
+async function saveInvoiceStatus() {
+  const invoice = state.statusInvoice;
+  const status = selectedInvoiceStatus();
+
+  if (!invoice || !status) {
+    toast('Seleziona uno stato per la fattura.');
+    return;
   }
+
+  const promiseDate = $('promiseDate').value || null;
+
+  if (status === 'promised' && !promiseDate) {
+    toast('Inserisci la data promessa di pagamento.');
+    $('promiseDate').focus();
+    return;
+  }
+
+  if (!state.session) {
+    const local = state.localInvoices.find(
+      (item) => String(item.id) === String(invoice.id)
+    );
+
+    if (!local) return;
+
+    local.status = status;
+    local.paid = status === 'paid';
+    local.promised_payment_date =
+      status === 'promised' ? promiseDate : null;
+    local.paid_at =
+      status === 'paid' ? new Date().toISOString() : null;
+
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
+    closeStatusModal();
+    render();
+    toast('Stato aggiornato in locale.');
+    return;
+  }
+
+  const update = {
+    status,
+    paid_at: status === 'paid' ? new Date().toISOString() : null,
+    promised_payment_date:
+      status === 'promised' ? promiseDate : null
+  };
+
+  const { error } = await state.supabase
+    .from('invoices')
+    .update(update)
+    .eq('id', invoice.id);
+
+  if (error) {
+    toast(`Errore aggiornamento stato: ${error.message}`);
+    return;
+  }
+
+  closeStatusModal();
+  await loadCloudData();
+  toast('Stato fattura aggiornato.');
+}
 
   async function deleteInvoice(invoice) {
     if (!window.confirm('Eliminare definitivamente questa scadenza?')) return;
@@ -982,7 +1042,7 @@ function closeHistory() {
       if (!invoice) return;
       if (button.dataset.op === 'remind') openReminder(invoice);
       if (button.dataset.op === 'history') await openHistory(invoice);
-      if (button.dataset.op === 'status') await changeStatus(invoice);
+      if (button.dataset.op === 'status') openStatusModal(invoice);
       if (button.dataset.op === 'delete') await deleteInvoice(invoice);
     });
 
@@ -1010,6 +1070,24 @@ function closeHistory() {
 
 $('historyBack').addEventListener('click', (event) => {
   if (event.target === $('historyBack')) closeHistory();
+});
+    $('closeStatusBtn').addEventListener('click', closeStatusModal);
+
+$('cancelStatusBtn').addEventListener('click', closeStatusModal);
+
+$('saveStatusBtn').addEventListener('click', saveInvoiceStatus);
+
+$('statusBack').addEventListener('click', (event) => {
+  if (event.target === $('statusBack')) closeStatusModal();
+});
+
+document.querySelectorAll('input[name="invoiceStatus"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    $('promiseField').classList.toggle(
+      'visible',
+      input.value === 'promised' && input.checked
+    );
+  });
 });
     $('copyBtn').addEventListener('click', copyReminder);
     $('emailBtn').addEventListener('click', openEmail);
