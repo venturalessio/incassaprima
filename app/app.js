@@ -1006,6 +1006,11 @@ function closeHistory() {
     $('modalBack').addEventListener('click', (event) => {
       if (event.target === $('modalBack')) closeReminder();
     });
+    $('closeHistoryBtn').addEventListener('click', closeHistory);
+
+$('historyBack').addEventListener('click', (event) => {
+  if (event.target === $('historyBack')) closeHistory();
+});
     $('copyBtn').addEventListener('click', copyReminder);
     $('emailBtn').addEventListener('click', openEmail);
 
