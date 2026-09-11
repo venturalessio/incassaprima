@@ -400,6 +400,7 @@ function updateAccountUi() {
                 <td><span class="badge ${status}">${statusLabel(status)}</span></td>
                 <td><div class="rowactions">
                   ${!['paid', 'disputed', 'paused'].includes(status) ? `<button type="button" class="small violet" data-op="remind" data-id="${invoice.id}">Sollecito</button>` : ''}
+                  <button type="button" class="small secondary" data-op="history" data-id="${invoice.id}">Storico</button>
                   <button type="button" class="small secondary" data-op="status" data-id="${invoice.id}">${status === 'paid' ? 'Riapri' : 'Stato'}</button>
                   <button type="button" class="small danger" data-op="delete" data-id="${invoice.id}">Elimina</button>
                 </div></td>
@@ -849,6 +850,119 @@ if (data.session) {
     toast(`${imported} righe importate nel cloud.`);
   }
 
+function escapeWithBreaks(value) {
+  return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+function reminderLabel(templateKey) {
+  return {
+    courtesy: 'Promemoria cortese',
+    first: 'Primo sollecito',
+    second: 'Secondo sollecito',
+    custom: 'Modello personalizzato'
+  }[templateKey] || templateKey || 'Modello non indicato';
+}
+
+function reminderStatusLabel(status) {
+  return {
+    draft: 'Testo copiato',
+    scheduled: 'Programmato',
+    sent: 'Email aperta',
+    failed: 'Non riuscito',
+    cancelled: 'Annullato'
+  }[status] || status || '—';
+}
+
+function channelLabel(channel) {
+  return {
+    manual: 'Copia manuale',
+    email: 'Email precompilata',
+    whatsapp: 'WhatsApp'
+  }[channel] || channel || '—';
+}
+
+function dateTimeIt(value) {
+  if (!value) return '—';
+
+  return new Intl.DateTimeFormat('it-IT', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(new Date(value));
+}
+
+async function openHistory(invoice) {
+  if (!state.session || invoice.source !== 'cloud') {
+    toast('Lo storico è disponibile per le scadenze salvate nel cloud.');
+    return;
+  }
+
+  $('historyTitle').textContent =
+    `Storico solleciti — ${invoice.customer_name || 'Cliente'}`;
+
+  $('historySubtitle').textContent =
+    `Fattura ${invoice.invoice_number || 'senza numero'} · ${moneyFromCents(invoice.amount_cents)}`;
+
+  $('historyContent').innerHTML =
+    '<div class="empty">Caricamento storico…</div>';
+
+  $('historyBack').style.display = 'flex';
+
+  const { data, error } = await state.supabase
+    .from('reminders')
+    .select('*')
+    .eq('invoice_id', invoice.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    $('historyContent').innerHTML =
+      `<div class="empty">Impossibile caricare lo storico: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    $('historyContent').innerHTML =
+      '<div class="empty">Nessun sollecito registrato per questa fattura.</div>';
+    return;
+  }
+
+  $('historyContent').innerHTML = `
+    <p class="history-count">
+      ${data.length} ${data.length === 1 ? 'sollecito registrato' : 'solleciti registrati'}
+    </p>
+
+    <div class="history-list">
+      ${data.map((reminder) => `
+        <article class="history-item">
+          <div class="history-item-head">
+            <strong>${escapeHtml(reminderLabel(reminder.template_key))}</strong>
+            <span class="badge ${reminder.status === 'sent' ? 'paid' : 'upcoming'}">
+              ${escapeHtml(reminderStatusLabel(reminder.status))}
+            </span>
+          </div>
+
+          <p class="history-meta">
+            ${dateTimeIt(reminder.created_at)}
+            · ${escapeHtml(channelLabel(reminder.channel))}
+            ${reminder.recipient_email ? ` · ${escapeHtml(reminder.recipient_email)}` : ''}
+          </p>
+
+          <details>
+            <summary>Visualizza testo registrato</summary>
+            <div class="history-message">
+              <p><strong>Oggetto:</strong> ${escapeHtml(reminder.subject_snapshot)}</p>
+              <p>${escapeWithBreaks(reminder.body_snapshot)}</p>
+            </div>
+          </details>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function closeHistory() {
+  $('historyBack').style.display = 'none';
+}
+  
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
     $('search').addEventListener('input', render);
@@ -867,6 +981,7 @@ if (data.session) {
       const invoice = findInvoice(button.dataset.id);
       if (!invoice) return;
       if (button.dataset.op === 'remind') openReminder(invoice);
+      if (button.dataset.op === 'history') await openHistory(invoice);
       if (button.dataset.op === 'status') await changeStatus(invoice);
       if (button.dataset.op === 'delete') await deleteInvoice(invoice);
     });
