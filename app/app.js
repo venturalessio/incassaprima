@@ -20,6 +20,7 @@
     invoices: [],
     activeInvoice: null,
     statusInvoice: null,
+    activeCustomer: null,
     localInvoices: []
   };
 
@@ -1022,9 +1023,208 @@ async function openHistory(invoice) {
 function closeHistory() {
   $('historyBack').style.display = 'none';
 }
-  
+  function customerInvoices(customerId) {
+  return state.invoices.filter((invoice) => invoice.customer_id === customerId);
+}
+
+function customerMetrics(customer) {
+  const invoices = customerInvoices(customer.id);
+  let openCents = 0;
+  let overdueCents = 0;
+  let openCount = 0;
+
+  invoices.forEach((invoice) => {
+    const status = invoiceStatus(invoice);
+    const cents = Number(invoice.amount_cents || 0);
+    if (!['paid', 'disputed', 'paused'].includes(status)) {
+      openCents += cents;
+      openCount += 1;
+      if (status === 'overdue') overdueCents += cents;
+    }
+  });
+
+  return { invoices, openCents, overdueCents, openCount };
+}
+
+function renderCustomers() {
+  const query = ($('customerSearch').value || '').trim().toLowerCase();
+  const customers = state.customers
+    .filter((customer) => {
+      const text = `${customer.name || ''} ${customer.email || ''} ${customer.pec || ''}`.toLowerCase();
+      return !query || text.includes(query);
+    })
+    .sort((a, b) => {
+      const aMetrics = customerMetrics(a);
+      const bMetrics = customerMetrics(b);
+      return bMetrics.overdueCents - aMetrics.overdueCents || a.name.localeCompare(b.name);
+    });
+
+  if (!customers.length) {
+    $('customersContent').innerHTML = '<div class="customer-empty">Nessun cliente trovato. Aggiungine uno oppure crea una fattura con un nuovo cliente.</div>';
+    return;
+  }
+
+  $('customersContent').innerHTML = `
+    <div class="customer-list">
+      ${customers.map((customer) => {
+        const metrics = customerMetrics(customer);
+        return `
+          <article class="customer-row">
+            <div>
+              <strong>${escapeHtml(customer.name)}</strong>
+              <small>${escapeHtml(customer.email || customer.pec || customer.phone || 'Nessun contatto registrato')}</small>
+              ${customer.reminders_paused ? '<small style="color:#b45309;font-weight:700">Solleciti automatici sospesi</small>' : ''}
+            </div>
+            <div class="customer-metric"><span>Da incassare</span><b>${moneyFromCents(metrics.openCents)}</b></div>
+            <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
+            <div class="customer-actions"><button type="button" class="small secondary" data-customer-op="edit" data-customer-id="${customer.id}">Apri</button></div>
+          </article>`;
+      }).join('')}
+    </div>`;
+}
+
+function openCustomers() {
+  if (!state.session) {
+    toast('Accedi al cloud per gestire l’anagrafica clienti.');
+    return;
+  }
+  $('customerSearch').value = '';
+  $('customersBack').style.display = 'flex';
+  renderCustomers();
+}
+
+function closeCustomers() {
+  $('customersBack').style.display = 'none';
+}
+
+function renderCustomerInvoices(customer) {
+  const invoices = customerInvoices(customer.id).sort((a, b) => b.due_date.localeCompare(a.due_date));
+  if (!invoices.length) {
+    $('customerInvoices').innerHTML = '<div class="customer-empty">Nessuna fattura registrata per questo cliente.</div>';
+    return;
+  }
+
+  $('customerInvoices').innerHTML = `
+    <div class="customer-invoice-list">
+      ${invoices.map((invoice) => {
+        const status = invoiceStatus(invoice);
+        return `
+          <div class="customer-invoice">
+            <div><strong>${escapeHtml(invoice.invoice_number || 'Senza numero')}</strong><small>Scadenza ${dateIt(invoice.due_date)}</small></div>
+            <div style="text-align:right"><strong>${moneyFromCents(invoice.amount_cents)}</strong><br><span class="badge ${status}">${statusLabel(status)}</span></div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function openCustomerEditor(customer) {
+  state.activeCustomer = customer || null;
+  const isNew = !customer;
+  const metrics = customer ? customerMetrics(customer) : { openCents: 0, overdueCents: 0, openCount: 0 };
+
+  $('customerEditTitle').textContent = isNew ? 'Nuovo cliente' : customer.name;
+  $('customerEditSubtitle').textContent = isNew ? 'Compila almeno nome e, se disponibile, email.' : 'Modifica i dati e le preferenze di sollecito.';
+  $('editCustomerName').value = customer?.name || '';
+  $('editCustomerEmail').value = customer?.email || '';
+  $('editCustomerPec').value = customer?.pec || '';
+  $('editCustomerPhone').value = customer?.phone || '';
+  $('editCustomerNotes').value = customer?.notes || '';
+  $('editCustomerPaused').checked = Boolean(customer?.reminders_paused);
+
+  $('customerSummary').innerHTML = isNew ? '' : `
+    <div><span>Da incassare</span><b>${moneyFromCents(metrics.openCents)}</b></div>
+    <div><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
+    <div><span>Fatture aperte</span><b>${metrics.openCount}</b></div>`;
+
+  renderCustomerInvoices(customer || { id: '__new__' });
+  $('customerEditBack').style.display = 'flex';
+}
+
+function closeCustomerEditor() {
+  state.activeCustomer = null;
+  $('customerEditBack').style.display = 'none';
+}
+
+async function saveCustomer() {
+  if (!state.session || !state.organization) {
+    toast('Accedi al cloud prima di salvare un cliente.');
+    return;
+  }
+
+  const name = $('editCustomerName').value.trim();
+  const email = $('editCustomerEmail').value.trim();
+  const pec = $('editCustomerPec').value.trim();
+  const phone = $('editCustomerPhone').value.trim();
+  const notes = $('editCustomerNotes').value.trim();
+  const remindersPaused = $('editCustomerPaused').checked;
+
+  if (!name) {
+    toast('Inserisci il nome del cliente.');
+    $('editCustomerName').focus();
+    return;
+  }
+
+  const payload = {
+    name,
+    email: email || null,
+    pec: pec || null,
+    phone: phone || null,
+    notes: notes || null,
+    reminders_paused: remindersPaused
+  };
+
+  if (state.activeCustomer) {
+    const { error } = await state.supabase
+      .from('customers')
+      .update(payload)
+      .eq('id', state.activeCustomer.id);
+
+    if (error) {
+      toast(`Errore salvataggio cliente: ${error.message}`);
+      return;
+    }
+
+    toast('Cliente aggiornato.');
+  } else {
+    const { error } = await state.supabase
+      .from('customers')
+      .insert({ ...payload, organization_id: state.organization.id });
+
+    if (error) {
+      toast(`Errore creazione cliente: ${error.message}`);
+      return;
+    }
+
+    toast('Cliente creato.');
+  }
+
+  closeCustomerEditor();
+  await loadCloudData();
+  if ($('customersBack').style.display === 'flex') renderCustomers();
+}
+
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
+    $('customersBtn').addEventListener('click', openCustomers);
+$('closeCustomersBtn').addEventListener('click', closeCustomers);
+$('customersBack').addEventListener('click', (event) => {
+  if (event.target === $('customersBack')) closeCustomers();
+});
+$('customerSearch').addEventListener('input', renderCustomers);
+$('newCustomerBtn').addEventListener('click', () => openCustomerEditor(null));
+$('customersContent').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-customer-op]');
+  if (!button) return;
+  const customer = state.customers.find((item) => item.id === button.dataset.customerId);
+  if (customer && button.dataset.customerOp === 'edit') openCustomerEditor(customer);
+});
+$('closeCustomerEditBtn').addEventListener('click', closeCustomerEditor);
+$('cancelCustomerEditBtn').addEventListener('click', closeCustomerEditor);
+$('customerEditBack').addEventListener('click', (event) => {
+  if (event.target === $('customerEditBack')) closeCustomerEditor();
+});
+$('saveCustomerBtn').addEventListener('click', saveCustomer);
+
     $('search').addEventListener('input', render);
     $('filter').addEventListener('change', render);
     $('customerSelect').addEventListener('change', (event) => {
