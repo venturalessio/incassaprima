@@ -75,6 +75,54 @@
 .history-message p:last-child {
   margin-bottom: 0;
 }
+    .status-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.status-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.status-option:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.status-option input {
+  width: auto;
+  margin: 3px 0 0;
+}
+
+.status-option strong {
+  display: block;
+  font-size: 14px;
+}
+
+.status-option span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.promise-field {
+  display: none;
+  margin-top: 12px;
+}
+
+.promise-field.visible {
+  display: flex;
+}
     @media(max-width:900px){.apphead{display:block}.actions{margin-top:13px;justify-content:flex-start}.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:repeat(2,1fr)}.formgrid .field:first-child{grid-column:span 2}.modelgrid{grid-template-columns:1fr}.toolbar{display:block}.filters{margin-top:10px}}
     @media(max-width:620px){.app{padding:22px 14px 50px}.formgrid{grid-template-columns:1fr}.formgrid .field:first-child{grid-column:auto}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:20px}table thead{display:none}table,tbody,tr,td{display:block}tr{border-bottom:1px solid var(--line);padding:8px 0}td{border:0;padding:4px 0}.filters input,.filters select{width:100%}.modalback{padding:10px}.modal{padding:16px}}
   </style>
@@ -185,7 +233,74 @@
     <div class="modalactions"><button type="button" class="secondary" id="copyBtn">Copia testo</button><button type="button" id="emailBtn">Apri email</button></div>
   </div>
 </div>
-<div id="historyBack" class="modalback">
+<div id="statusBack" class="modalback">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statusTitle">
+    <div class="modalhead">
+      <div>
+        <h2 id="statusTitle">Aggiorna stato fattura</h2>
+        <p class="hint" id="statusSubtitle"></p>
+      </div>
+
+      <button type="button" id="closeStatusBtn" class="close" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="status-options">
+      <label class="status-option">
+        <input type="radio" name="invoiceStatus" value="open">
+        <span>
+          <strong>Aperta</strong>
+          <span>La fattura è da incassare; i solleciti restano disponibili.</span>
+        </span>
+      </label>
+
+      <label class="status-option">
+        <input type="radio" name="invoiceStatus" value="paid">
+        <span>
+          <strong>Pagata</strong>
+          <span>Il pagamento è stato ricevuto; non proporre altri solleciti.</span>
+        </span>
+      </label>
+
+      <label class="status-option">
+        <input type="radio" name="invoiceStatus" value="promised">
+        <span>
+          <strong>Promessa di pagamento</strong>
+          <span>Il cliente ha indicato una data prevista di saldo.</span>
+        </span>
+      </label>
+
+      <label class="status-option">
+        <input type="radio" name="invoiceStatus" value="disputed">
+        <span>
+          <strong>Contestata</strong>
+          <span>Il cliente contesta la fattura: blocca i solleciti.</span>
+        </span>
+      </label>
+
+      <label class="status-option">
+        <input type="radio" name="invoiceStatus" value="paused">
+        <span>
+          <strong>Sospesa</strong>
+          <span>Caso in attesa o da non contattare: blocca i solleciti.</span>
+        </span>
+      </label>
+    </div>
+
+    <div id="promiseField" class="field promise-field">
+      <label for="promiseDate">Data promessa di pagamento</label>
+      <input id="promiseDate" type="date">
+      <p class="smallhint">
+        Fino a questa data l’app non proporrà solleciti automatici nella futura versione Pro.
+      </p>
+    </div>
+
+    <div class="modalactions">
+      <button type="button" class="secondary" id="cancelStatusBtn">Annulla</button>
+      <button type="button" id="saveStatusBtn">Salva stato</button>
+    </div>
+  </div>
+</div>
+  <div id="historyBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <div class="modalhead">
       <div>
