@@ -646,30 +646,33 @@ Cordiali saluti.`
       return;
     }
 
-    const { data, error } = await state.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          organization_name: organizationName || undefined
-        }
-      }
-    });
+const { data, error } = await state.supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: 'https://venturalessio.github.io/incassaprima/app/',
+    data: {
+      organization_name: organizationName || undefined
+    }
+  }
+});
 
     if (error) {
       toast(`Registrazione non riuscita: ${error.message}`);
       return;
     }
 
-    if (data.session) {
-      state.session = data.session;
-      await loadCloudData();
-      setStatus(`Cloud attivo · ${email}`, 'success');
-      closeAuth();
-      toast('Account creato e cloud attivo.');
-    } else {
-      toast('Account creato. Controlla l’email per confermare l’accesso.');
-    }
+if (data.session) {
+  state.session = data.session;
+  await loadCloudData();
+  setStatus(`Cloud attivo · ${email}`, 'success');
+  closeAuth();
+  toast('Account creato e cloud attivo.');
+} else {
+  closeAuth();
+  setStatus('Account creato. Conferma l’email per attivare il cloud.', 'warning');
+  toast('Controlla la tua email e conferma l’indirizzo.');
+}
   }
 
   async function signIn() {
