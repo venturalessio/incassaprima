@@ -220,7 +220,20 @@ Cordiali saluti.`
       source: 'local'
     };
   }
+function updateAccountUi() {
+  const authButton = $('authBtn');
+  const signOutButton = $('signOutBtn');
 
+  if (!authButton || !signOutButton) return;
+
+  if (state.session) {
+    authButton.style.display = 'none';
+    signOutButton.style.display = 'inline-block';
+  } else {
+    authButton.style.display = 'inline-block';
+    signOutButton.style.display = 'none';
+  }
+}
   async function initializeSupabase() {
     if (!configured()) {
       setStatus('Modalità locale: configura Supabase per attivare Pro.', 'warning');
@@ -241,6 +254,7 @@ Cordiali saluti.`
     }
 
     state.session = data.session;
+    updateAccountUi();
     if (state.session) {
       await loadCloudData();
       setStatus(`Cloud attivo · ${state.session.user.email}`, 'success');
@@ -664,6 +678,7 @@ const { data, error } = await state.supabase.auth.signUp({
 
 if (data.session) {
   state.session = data.session;
+  updateAccountUi();
   await loadCloudData();
   setStatus(`Cloud attivo · ${email}`, 'success');
   closeAuth();
@@ -694,6 +709,7 @@ if (data.session) {
     }
 
     state.session = data.session;
+    updateAccountUi();
     await loadCloudData();
     setStatus(`Cloud attivo · ${email}`, 'success');
     closeAuth();
@@ -704,6 +720,7 @@ if (data.session) {
     if (!state.supabase) return;
     await state.supabase.auth.signOut();
     state.session = null;
+    updateAccountUi();
     state.organization = null;
     state.customers = [];
     state.invoices = [];
@@ -905,6 +922,7 @@ if (data.session) {
     $('dueDate').value = today();
     bindEvents();
     render();
+    updateAccountUi();
     await initializeSupabase();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../service-worker.js');
   }
