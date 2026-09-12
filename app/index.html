@@ -334,11 +334,70 @@
   text-align: center;
   color: var(--muted);
 }
+    .rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.rule-box {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.rule-box strong {
+  display: block;
+  font-size: 14px;
+}
+
+.rule-box span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.locked-rule {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.locked-rule strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.rule-error {
+  display: none;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.rule-error.visible {
+  display: block;
+}
     @media(max-width:900px){.apphead{display:block}.actions{margin-top:13px;justify-content:flex-start}.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:repeat(2,1fr)}.formgrid .field:first-child{grid-column:span 2}.modelgrid{grid-template-columns:1fr}.toolbar{display:block}.filters{margin-top:10px}}
     @media(max-width:620px){.app{padding:22px 14px 50px}.formgrid{grid-template-columns:1fr}.formgrid .field:first-child{grid-column:auto}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:20px}table thead{display:none}table,tbody,tr,td{display:block}tr{border-bottom:1px solid var(--line);padding:8px 0}td{border:0;padding:4px 0}.filters input,.filters select{width:100%}.modalback{padding:10px}.modal{padding:16px}}
     .customer-row {
   grid-template-columns: 1fr;
   gap: 7px;
+      .rules-grid {
+  grid-template-columns: 1fr;
+}
 }
 
 .customer-actions {
@@ -365,6 +424,7 @@
       <span id="syncStatus" class="sync-status">Caricamento…</span>
     </div>
     <div class="actions">
+      <button type="button" class="secondary" id="rulesBtn">Regole</button>
       <button type="button" class="secondary" id="approvalBtn">Da approvare<span id="approvalCount">0</span></button>
       <button type="button" class="secondary" id="customersBtn">Clienti</button>
       <button type="button" class="secondary" id="authBtn">Accedi / Registrati</button>
@@ -462,7 +522,54 @@
     <div class="modalactions"><button type="button" class="secondary" id="copyBtn">Copia testo</button><button type="button" id="emailBtn">Apri email</button></div>
   </div>
 </div>
-<div id="approvalBack" class="modalback">
+<div id="rulesBack" class="modalback">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="modalhead">
+      <div>
+        <h2 id="rulesTitle">Regole sollecito</h2>
+        <p class="hint">
+          Configura quando IncassaPrima prepara una bozza.
+          In questa fase nessuna email viene inviata automaticamente.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="closeRulesBtn"
+        class="close"
+        aria-label="Chiudi"
+      >×</button>
+    </div>
+
+    <div class="rules-grid">
+      <div class="field rule-box">
+        <label for="firstReminderDays">Primo sollecito</label>
+        <input id="firstReminderDays" type="number" min="1" max="60" step="1">
+        <span>Giorni dopo la scadenza per proporre il primo sollecito.</span>
+      </div>
+
+      <div class="field rule-box">
+        <label for="secondReminderDays">Secondo sollecito</label>
+        <input id="secondReminderDays" type="number" min="2" max="120" step="1">
+        <span>Giorni dopo la scadenza per proporre il secondo sollecito.</span>
+      </div>
+    </div>
+
+    <div id="rulesError" class="rule-error"></div>
+
+    <div class="locked-rule">
+      <strong>Approvazione umana: attiva</strong>
+      Le proposte entrano nella coda “Da approvare”.
+      L’invio automatico delle email è disattivato nella fase alpha.
+    </div>
+
+    <div class="modalactions">
+      <button type="button" class="secondary" id="cancelRulesBtn">Annulla</button>
+      <button type="button" id="saveRulesBtn">Salva regole</button>
+    </div>
+  </div>
+</div>
+  <div id="approvalBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
     <div class="modalhead">
       <div>
