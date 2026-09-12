@@ -262,7 +262,8 @@ function isEligibleForAutomaticReminder(invoice) {
       invoice_number: invoice.number || '',
       amount: Number(invoice.amount || 0),
       due: invoice.due,
-      status: invoice.paid ? 'paid' : 'open',
+      status: invoice.status || (invoice.paid ? 'paid' : 'open'),
+      promised_payment_date: invoice.promised_payment_date || null,
       source: 'local'
     };
   }
@@ -308,6 +309,7 @@ function updateAccountUi() {
       setStatus('Modalità locale. Accedi per salvare nel cloud.', 'info');
     }
   }
+
 
   async function loadReminderSettings() {
   if (!state.session || !state.organization) {
@@ -413,7 +415,7 @@ await generateScheduledReminders();
         ? !['paid', 'disputed', 'paused'].includes(status)
         : status === filter);
       return matchesText && matchesStatus;
-    }).sort((a, b) => (a.due_date || a.due).localeCompare(b.due_date || b.due));
+    }).sort((a, b) => String(a.due_date || a.due || '').localeCompare(String(b.due_date || b.due || '')));
   }
 
   function render() {
@@ -985,6 +987,7 @@ updateApprovalBadge();
     }
 
     if (!state.session) {
+      let imported = 0;
       rows.forEach((values) => {
         const amount = parseItalianAmount(values[2]);
         if (Number.isFinite(amount) && values[3]) {
@@ -995,13 +998,15 @@ updateApprovalBadge();
             amount,
             due: values[3],
             email: values[4] || '',
+            status: ['paid', 'promised', 'disputed', 'paused'].includes(values[5]) ? values[5] : 'open',
             paid: values[5] === 'paid' || values[5] === 'true'
           });
+          imported += 1;
         }
       });
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
       render();
-      toast(`${rows.length} righe importate in locale.`);
+      toast(`${imported} righe importate in locale.`);
       return;
     }
 
@@ -1432,10 +1437,8 @@ async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) 
     console.error('Errore registrazione storico attività:', error.message);
   }
 }
-
   async function generateScheduledReminders() {
-    
-    if (!state.session || !state.organization) return;
+  if (!state.session || !state.organization) return;
 
   const invoiceIds = state.invoices.map((invoice) => invoice.id);
 
@@ -1555,7 +1558,6 @@ function renderApprovalQueue() {
     </div>
   `;
 }
-        if (!invoice) return '';
         const days = diffDays(invoice);
         return `
           <article class="approval-item">
