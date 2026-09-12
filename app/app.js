@@ -190,7 +190,7 @@ function isEligibleForAutomaticReminder(invoice) {
   const todayIso = today();
 
   if (!invoice || invoice.source !== 'cloud') return false;
-  if (!customer || customer.reminders_paused) return false;
+  if (!customer || customer._paused) return false;
   if (['paid', 'disputed', 'paused'].includes(status)) return false;
 
   if (
@@ -309,7 +309,7 @@ function updateAccountUi() {
     }
   }
 
-  async function loadReminderSettings() {
+  async function loadettings() {
   if (!state.session || !state.organization) return;
 
   const { data, error } = await state.supabase
@@ -324,7 +324,7 @@ function updateAccountUi() {
   }
 
   if (data) {
-    state.reminderSettings = data;
+    state.ettings = data;
   }
 }
 
@@ -349,7 +349,7 @@ function updateAccountUi() {
 
     state.organization = memberships[0].organizations;
     const organizationId = memberships[0].organization_id;
-    await loadReminderSettings();
+    await loadettings();
 
     const { data: customers, error: customerError } = await state.supabase
       .from('customers')
@@ -1369,20 +1369,30 @@ async function loadScheduledReminders() {
   }
 
   const { data, error } = await state.supabase
-    .from('reminders')
-    .select('*')
-    .in('invoice_id', invoiceIds)
-    .eq('status', 'scheduled')
-    .order('scheduled_at', { ascending: true });
+  .from('scheduled_reminders')
+  .select(`
+    *,
+    invoices (
+      id,
+      customer_name,
+      document_number,
+      total_amount,
+      due_date,
+      status
+    )
+  `)
+  .eq('organization_id', state.organization.id)
+  .eq('status', 'scheduled')
+  .order('scheduled_at', { ascending: true });
 
-  if (error) {
-    console.error('Errore caricamento bozze:', error.message);
-    state.scheduledReminders = [];
-  } else {
-    state.scheduledReminders = data || [];
-  }
+if (error) {
+  console.error('Errore caricamento bozze:', error.message);
+  state.scheduledReminders = [];
+} else {
+  state.scheduledReminders = data || [];
+}
 
-  updateApprovalBadge();
+updateApprovalBadge();
 }
 
 function updateApprovalBadge() {
