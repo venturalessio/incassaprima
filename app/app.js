@@ -1365,32 +1365,71 @@ function updateApprovalBadge() {
 async function generateScheduledReminders() {
   if (!state.session || !state.organization) return;
 
-  const existing = new Set(
-    state.scheduledReminders.map((reminder) => `${reminder.invoice_id}:${reminder.template_key}`)
+  const invoiceIds = state.invoices.map((invoice) => invoice.id);
+
+  if (!invoiceIds.length) return;
+
+  /*
+    Carichiamo lo storico completo dei reminder delle fatture visibili.
+    Non basta guardare solo le bozze scheduled:
+    un reminder già sent, draft o cancelled deve bloccare la ricreazione
+    dello stesso modello.
+  */
+  const { data: allReminders, error } = await state.supabase
+    .from('reminders')
+    .select('invoice_id, template_key, status')
+    .in('invoice_id', invoiceIds);
+
+  if (error) {
+    console.error('Errore verifica storico reminder:', error.message);
+    return;
+  }
+
+  /*
+    Chiave esempio: "uuid-fattura:first".
+    Se esiste qualsiasi reminder storico per quel modello, non creiamo
+    una nuova bozza automatica.
+  */
+  const alreadyHandled = new Set(
+    (allReminders || []).map(
+      (reminder) => `${reminder.invoice_id}:${reminder.template_key}`
+    )
   );
 
   const candidates = state.invoices
     .filter((invoice) => isEligibleForAutomaticReminder(invoice))
-    .map((invoice) => ({ invoice, templateKey: suggestedAutomaticModel(invoice) }))
-    .filter((item) => item.templateKey && !existing.has(`${item.invoice.id}:${item.templateKey}`));
+    .map((invoice) => ({
+      invoice,
+      templateKey: suggestedAutomaticModel(invoice)
+    }))
+    .filter(
+      (item) =>
+        item.templateKey &&
+        !alreadyHandled.has(`${item.invoice.id}:${item.templateKey}`)
+    );
 
   if (!candidates.length) return;
 
   for (const candidate of candidates) {
-    const payload = buildScheduledReminder(candidate.invoice, candidate.templateKey);
-    const { error } = await state.supabase.from('reminders').insert(payload);
+    const payload = buildScheduledReminder(
+      candidate.invoice,
+      candidate.templateKey
+    );
 
-    // Codice 23505 = vincolo univoco: un'altra sessione ha già creato la bozza.
-    if (error && error.code !== '23505') {
-      console.error('Errore creazione bozza:', error.message);
+    const { error: insertError } = await state.supabase
+      .from('reminders')
+      .insert(payload);
+
+    /*
+      23505 = un'altra sessione ha creato la stessa bozza nel frattempo.
+      Non è un errore da mostrare all'utente.
+    */
+    if (insertError && insertError.code !== '23505') {
+      console.error('Errore creazione bozza:', insertError.message);
     }
   }
 
   await loadScheduledReminders();
-}
-
-function findInvoiceById(id) {
-  return state.invoices.find((invoice) => String(invoice.id) === String(id));
 }
 
 async function openApprovalQueue() {
