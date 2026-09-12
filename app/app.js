@@ -328,6 +328,26 @@ function updateAccountUi() {
   }
 }
 
+  async function loadReminderSettings() {
+  if (!state.session || !state.organization) {
+    return;
+  }
+
+  const { data, error } = await state.supabase
+    .from('organization_reminder_settings')
+    .select('*')
+    .eq('organization_id', state.organization.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Errore caricamento regole:', error.message);
+    return;
+  }
+
+  if (data) {
+    state.reminderSettings = data;
+  }
+}
   async function loadCloudData() {
     if (!state.supabase || !state.session) return;
 
