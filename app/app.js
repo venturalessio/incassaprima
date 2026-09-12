@@ -1451,28 +1451,9 @@ async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) 
     console.error('Errore registrazione storico attività:', error.message);
   }
 }
-async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) {
-  if (!state.supabase || !state.session || !state.organization || !invoiceId) {
-    return;
-  }
 
-  const { error } = await state.supabase
-    .from('invoice_activity_log')
-    .insert({
-      organization_id: state.organization.id,
-      invoice_id: invoiceId,
-      actor_user_id: state.session.user.id,
-      event_type: eventType,
-      message,
-      metadata
-    });
-
-  if (error) {
-    console.error('Errore registrazione storico attività:', error.message);
-  }
-}
   async function generateScheduledReminders() {
-    async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) {
+    
   if (!state.supabase || !state.session || !state.organization || !invoiceId) {
     return;
   }
