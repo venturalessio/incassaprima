@@ -309,25 +309,6 @@ function updateAccountUi() {
     }
   }
 
-  async function loadettings() {
-  if (!state.session || !state.organization) return;
-
-  const { data, error } = await state.supabase
-    .from('organization_reminder_settings')
-    .select('*')
-    .eq('organization_id', state.organization.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Errore caricamento regole:', error.message);
-    return;
-  }
-
-  if (data) {
-    state.ettings = data;
-  }
-}
-
   async function loadReminderSettings() {
   if (!state.session || !state.organization) {
     return;
@@ -1454,26 +1435,7 @@ async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) 
 
   async function generateScheduledReminders() {
     
-  if (!state.supabase || !state.session || !state.organization || !invoiceId) {
-    return;
-  }
-
-  const { error } = await state.supabase
-    .from('invoice_activity_log')
-    .insert({
-      organization_id: state.organization.id,
-      invoice_id: invoiceId,
-      actor_user_id: state.session.user.id,
-      event_type: eventType,
-      message,
-      metadata
-    });
-
-  if (error) {
-    console.error('Errore registrazione storico attività:', error.message);
-  }
-}
-  if (!state.session || !state.organization) return;
+    if (!state.session || !state.organization) return;
 
   const invoiceIds = state.invoices.map((invoice) => invoice.id);
 
