@@ -1382,6 +1382,7 @@ async function loadScheduledReminders() {
   }
 
   const invoiceIds = state.invoices.map((invoice) => invoice.id);
+
   if (!invoiceIds.length) {
     state.scheduledReminders = [];
     updateApprovalBadge();
@@ -1389,21 +1390,10 @@ async function loadScheduledReminders() {
   }
 
   const { data, error } = await state.supabase
-    .from('scheduled_reminders')
-    .select(`
-      *,
-      invoices (
-        id,
-        customer_name,
-        document_number,
-        total_amount,
-        due_date,
-        status
-      )
-    `)
-    .eq('organization_id', state.organization.id)
-    .eq('status', 'scheduled')
+    .from('reminders')
+    .select('*')
     .in('invoice_id', invoiceIds)
+    .eq('status', 'scheduled')
     .order('scheduled_at', { ascending: true });
 
   if (error) {
