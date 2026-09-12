@@ -23,6 +23,13 @@
     activeCustomer: null,
     scheduledReminders: [],
     activeScheduledReminder: null,
+    reminderSettings: {
+  first_reminder_after_days: 3,
+  second_reminder_after_days: 15,
+  approval_required: true,
+  automatic_email_enabled: false
+},
+
     localInvoices: []
   };
 
@@ -302,6 +309,25 @@ function updateAccountUi() {
     }
   }
 
+  async function loadReminderSettings() {
+  if (!state.session || !state.organization) return;
+
+  const { data, error } = await state.supabase
+    .from('organization_reminder_settings')
+    .select('*')
+    .eq('organization_id', state.organization.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Errore caricamento regole:', error.message);
+    return;
+  }
+
+  if (data) {
+    state.reminderSettings = data;
+  }
+}
+
   async function loadCloudData() {
     if (!state.supabase || !state.session) return;
 
@@ -323,6 +349,7 @@ function updateAccountUi() {
 
     state.organization = memberships[0].organizations;
     const organizationId = memberships[0].organization_id;
+    await loadReminderSettings();
 
     const { data: customers, error: customerError } = await state.supabase
       .from('customers')
@@ -1305,8 +1332,11 @@ async function saveCustomer() {
 
 function suggestedAutomaticModel(invoice) {
   const days = diffDays(invoice);
-  if (days >= 15) return 'second';
-  if (days >= 3) return 'first';
+  const firstDays = Number(state.reminderSettings?.first_reminder_after_days || 3);
+  const secondDays = Number(state.reminderSettings?.second_reminder_after_days || 15);
+
+  if (days >= secondDays) return 'second';
+  if (days >= firstDays) return 'first';
   return null;
 }
 
@@ -1514,9 +1544,85 @@ function openScheduledReminder(reminderId) {
   $('mailBody').value = reminder.body_snapshot;
 }
 
+  function openRules() {
+  if (!state.session || !state.organization) {
+    toast('Accedi al cloud per modificare le regole di sollecito.');
+    return;
+  }
+
+  $('rulesError').textContent = '';
+  $('rulesError').classList.remove('visible');
+  $('firstReminderDays').value = state.reminderSettings.first_reminder_after_days || 3;
+  $('secondReminderDays').value = state.reminderSettings.second_reminder_after_days || 15;
+  $('rulesBack').style.display = 'flex';
+}
+
+function closeRules() {
+  $('rulesBack').style.display = 'none';
+}
+
+function showRulesError(message) {
+  $('rulesError').textContent = message;
+  $('rulesError').classList.add('visible');
+}
+
+async function saveRules() {
+  if (!state.session || !state.organization) return;
+
+  const firstDays = Number($('firstReminderDays').value);
+  const secondDays = Number($('secondReminderDays').value);
+
+  if (!Number.isInteger(firstDays) || firstDays < 1 || firstDays > 60) {
+    showRulesError('Il primo sollecito deve essere un numero intero da 1 a 60 giorni.');
+    return;
+  }
+
+  if (!Number.isInteger(secondDays) || secondDays < 2 || secondDays > 120) {
+    showRulesError('Il secondo sollecito deve essere un numero intero da 2 a 120 giorni.');
+    return;
+  }
+
+  if (secondDays <= firstDays) {
+    showRulesError('Il secondo sollecito deve essere successivo al primo.');
+    return;
+  }
+
+  const payload = {
+    first_reminder_after_days: firstDays,
+    second_reminder_after_days: secondDays,
+    approval_required: true,
+    automatic_email_enabled: false
+  };
+
+  const { data, error } = await state.supabase
+    .from('organization_reminder_settings')
+    .update(payload)
+    .eq('organization_id', state.organization.id)
+    .select()
+    .single();
+
+  if (error) {
+    showRulesError(`Impossibile salvare le regole: ${error.message}`);
+    return;
+  }
+
+  state.reminderSettings = data;
+  closeRules();
+  await generateScheduledReminders();
+  toast('Regole sollecito salvate.');
+}
+
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
     $('customersBtn').addEventListener('click', openCustomers);
+    $('rulesBtn').addEventListener('click', openRules);
+$('closeRulesBtn').addEventListener('click', closeRules);
+$('cancelRulesBtn').addEventListener('click', closeRules);
+$('saveRulesBtn').addEventListener('click', saveRules);
+$('rulesBack').addEventListener('click', (event) => {
+  if (event.target === $('rulesBack')) closeRules();
+});
+
 $('closeCustomersBtn').addEventListener('click', closeCustomers);
 $('customersBack').addEventListener('click', (event) => {
   if (event.target === $('customersBack')) closeCustomers();
