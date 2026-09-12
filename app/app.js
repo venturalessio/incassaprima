@@ -21,6 +21,8 @@
     activeInvoice: null,
     statusInvoice: null,
     activeCustomer: null,
+    scheduledReminders: [],
+    activeScheduledReminder: null,
     localInvoices: []
   };
 
@@ -353,7 +355,9 @@ function updateAccountUi() {
     }));
 
     updateCustomerOptions();
-    render();
+render();
+await loadScheduledReminders();
+await generateScheduledReminders();
   }
 
   function updateCustomerOptions() {
@@ -720,9 +724,10 @@ chooseModel(key);
   }
 
   function closeReminder() {
-    $('modalBack').style.display = 'none';
-    state.activeInvoice = null;
-  }
+  $('modalBack').style.display = 'none';
+  state.activeInvoice = null;
+  state.activeScheduledReminder = null;
+}
 
   function chooseModel(key) {
     if (!state.activeInvoice) return;
@@ -761,10 +766,36 @@ chooseModel(key);
   }
 
   async function openEmail() {
-    const email = state.activeInvoice?.customer_email || state.activeInvoice?.email || '';
+  const email = state.activeInvoice?.customer_email || state.activeInvoice?.email || '';
+
+  if (state.activeScheduledReminder && state.session) {
+    const { error } = await state.supabase
+      .from('reminders')
+      .update({
+        status: 'sent',
+        channel: 'email',
+        sent_at: new Date().toISOString(),
+        subject_snapshot: $('mailSubject').value,
+        body_snapshot: $('mailBody').value,
+        recipient_email: email || null
+      })
+      .eq('id', state.activeScheduledReminder.id)
+      .eq('status', 'scheduled');
+
+    if (error) {
+      toast(`Impossibile approvare la bozza: ${error.message}`);
+      return;
+    }
+
+    state.activeScheduledReminder = null;
+    await loadScheduledReminders();
+    toast('Bozza approvata: apertura email in corso.');
+  } else {
     await saveReminderLog('sent');
-    window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent($('mailSubject').value)}&body=${encodeURIComponent($('mailBody').value)}`;
   }
+
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent($('mailSubject').value)}&body=${encodeURIComponent($('mailBody').value)}`;
+}
 
   async function signUp() {
     if (!configured()) {
@@ -844,6 +875,9 @@ if (data.session) {
     state.organization = null;
     state.customers = [];
     state.invoices = [];
+    state.scheduledReminders = [];
+state.activeScheduledReminder = null;
+updateApprovalBadge();
     normalizeLocalInvoices();
     updateCustomerOptions();
     render();
@@ -1261,6 +1295,186 @@ async function saveCustomer() {
   if ($('customersBack').style.display === 'flex') renderCustomers();
 }
 
+  function scheduledReminderLabel(templateKey) {
+  return {
+    courtesy: 'Promemoria cortese',
+    first: 'Primo sollecito',
+    second: 'Secondo sollecito'
+  }[templateKey] || templateKey;
+}
+
+function suggestedAutomaticModel(invoice) {
+  const days = diffDays(invoice);
+  if (days >= 15) return 'second';
+  if (days >= 3) return 'first';
+  return null;
+}
+
+function buildScheduledReminder(invoice, templateKey) {
+  return {
+    invoice_id: invoice.id,
+    template_key: templateKey,
+    channel: 'email',
+    status: 'scheduled',
+    scheduled_at: new Date().toISOString(),
+    subject_snapshot: fillTemplate(models[templateKey].subject, invoice),
+    body_snapshot: fillTemplate(models[templateKey].body, invoice),
+    recipient_email: invoice.customer_email || null,
+    created_by: state.session.user.id
+  };
+}
+
+async function loadScheduledReminders() {
+  if (!state.session || !state.organization) {
+    state.scheduledReminders = [];
+    updateApprovalBadge();
+    return;
+  }
+
+  const invoiceIds = state.invoices.map((invoice) => invoice.id);
+  if (!invoiceIds.length) {
+    state.scheduledReminders = [];
+    updateApprovalBadge();
+    return;
+  }
+
+  const { data, error } = await state.supabase
+    .from('reminders')
+    .select('*')
+    .in('invoice_id', invoiceIds)
+    .eq('status', 'scheduled')
+    .order('scheduled_at', { ascending: true });
+
+  if (error) {
+    console.error('Errore caricamento bozze:', error.message);
+    state.scheduledReminders = [];
+  } else {
+    state.scheduledReminders = data || [];
+  }
+
+  updateApprovalBadge();
+}
+
+function updateApprovalBadge() {
+  const count = $('approvalCount');
+  if (!count) return;
+  count.textContent = state.scheduledReminders.length;
+  count.style.display = state.scheduledReminders.length ? 'inline-grid' : 'none';
+}
+
+async function generateScheduledReminders() {
+  if (!state.session || !state.organization) return;
+
+  const existing = new Set(
+    state.scheduledReminders.map((reminder) => `${reminder.invoice_id}:${reminder.template_key}`)
+  );
+
+  const candidates = state.invoices
+    .filter((invoice) => isEligibleForAutomaticReminder(invoice))
+    .map((invoice) => ({ invoice, templateKey: suggestedAutomaticModel(invoice) }))
+    .filter((item) => item.templateKey && !existing.has(`${item.invoice.id}:${item.templateKey}`));
+
+  if (!candidates.length) return;
+
+  for (const candidate of candidates) {
+    const payload = buildScheduledReminder(candidate.invoice, candidate.templateKey);
+    const { error } = await state.supabase.from('reminders').insert(payload);
+
+    // Codice 23505 = vincolo univoco: un'altra sessione ha già creato la bozza.
+    if (error && error.code !== '23505') {
+      console.error('Errore creazione bozza:', error.message);
+    }
+  }
+
+  await loadScheduledReminders();
+}
+
+function findInvoiceById(id) {
+  return state.invoices.find((invoice) => String(invoice.id) === String(id));
+}
+
+async function openApprovalQueue() {
+  if (!state.session) {
+    toast('Accedi al cloud per visualizzare i solleciti da approvare.');
+    return;
+  }
+
+  await loadScheduledReminders();
+  $('approvalBack').style.display = 'flex';
+  renderApprovalQueue();
+}
+
+function closeApprovalQueue() {
+  $('approvalBack').style.display = 'none';
+}
+
+function renderApprovalQueue() {
+  const reminders = state.scheduledReminders;
+  if (!reminders.length) {
+    $('approvalContent').innerHTML = '<div class="approval-empty">Nessun sollecito da approvare. Le fatture idonee e scadute compariranno qui come bozze.</div>';
+    return;
+  }
+
+  $('approvalContent').innerHTML = `
+    <div class="approval-list">
+      ${reminders.map((reminder) => {
+        const invoice = findInvoiceById(reminder.invoice_id);
+        if (!invoice) return '';
+        const days = diffDays(invoice);
+        return `
+          <article class="approval-item">
+            <div class="approval-item-head">
+              <div>
+                <h3>${escapeHtml(invoice.customer_name || 'Cliente')}</h3>
+                <p>Fattura ${escapeHtml(invoice.invoice_number || 'senza numero')} · ${moneyFromCents(invoice.amount_cents)} · scaduta da ${days} giorni</p>
+                <p>Modello: <strong>${escapeHtml(scheduledReminderLabel(reminder.template_key))}</strong>${reminder.recipient_email ? ` · ${escapeHtml(reminder.recipient_email)}` : ' · email cliente non inserita'}</p>
+              </div>
+              <span class="badge due">Da approvare</span>
+            </div>
+            <div class="approval-actions">
+              <button type="button" class="small secondary" data-approval-op="cancel" data-reminder-id="${reminder.id}">Annulla</button>
+              <button type="button" class="small violet" data-approval-op="approve" data-reminder-id="${reminder.id}">Apri e approva</button>
+            </div>
+          </article>`;
+      }).join('')}
+    </div>`;
+}
+
+async function cancelScheduledReminder(reminderId) {
+  const { error } = await state.supabase
+    .from('reminders')
+    .update({ status: 'cancelled' })
+    .eq('id', reminderId)
+    .eq('status', 'scheduled');
+
+  if (error) {
+    toast(`Impossibile annullare la bozza: ${error.message}`);
+    return;
+  }
+
+  await loadScheduledReminders();
+  renderApprovalQueue();
+  toast('Bozza annullata.');
+}
+
+function openScheduledReminder(reminderId) {
+  const reminder = state.scheduledReminders.find((item) => String(item.id) === String(reminderId));
+  if (!reminder) return;
+  const invoice = findInvoiceById(reminder.invoice_id);
+  if (!invoice) {
+    toast('La fattura associata a questa bozza non è disponibile.');
+    return;
+  }
+
+  state.activeScheduledReminder = reminder;
+  closeApprovalQueue();
+  openReminder(invoice, reminder.template_key);
+
+  // Ripristina esattamente il testo della bozza programmata.
+  $('mailSubject').value = reminder.subject_snapshot;
+  $('mailBody').value = reminder.body_snapshot;
+}
+
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
     $('customersBtn').addEventListener('click', openCustomers);
@@ -1351,6 +1565,18 @@ document.querySelectorAll('input[name="invoiceStatus"]').forEach((input) => {
     $('emailBtn').addEventListener('click', openEmail);
 
     $('authBtn').addEventListener('click', openAuth);
+    $('approvalBtn').addEventListener('click', openApprovalQueue);
+$('closeApprovalBtn').addEventListener('click', closeApprovalQueue);
+$('approvalBack').addEventListener('click', (event) => {
+  if (event.target === $('approvalBack')) closeApprovalQueue();
+});
+$('approvalContent').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-approval-op]');
+  if (!button) return;
+  if (button.dataset.approvalOp === 'cancel') await cancelScheduledReminder(button.dataset.reminderId);
+  if (button.dataset.approvalOp === 'approve') openScheduledReminder(button.dataset.reminderId);
+});
+
     $('closeAuthBtn').addEventListener('click', closeAuth);
     $('authBack').addEventListener('click', (event) => {
       if (event.target === $('authBack')) closeAuth();
