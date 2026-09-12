@@ -1508,7 +1508,16 @@ function renderApprovalQueue() {
   $('approvalContent').innerHTML = `
     <div class="approval-list">
       ${reminders.map((reminder) => {
-        const invoice = findInvoiceById(reminder.invoice_id);
+        const invoice = state.invoices.find(
+  (invoice) => invoice.id === reminder.invoice_id
+);
+        if (!invoice) {
+  return `
+    <div class="empty">
+      Fattura collegata non trovata per il sollecito.
+    </div>
+  `;
+}
         if (!invoice) return '';
         const days = diffDays(invoice);
         return `
@@ -1546,7 +1555,11 @@ async function cancelScheduledReminder(reminderId) {
   renderApprovalQueue();
   toast('Bozza annullata.');
 }
-
+function findInvoiceById(invoiceId) {
+  return state.invoices.find(
+    (invoice) => String(invoice.id) === String(invoiceId)
+  );
+}
 function openScheduledReminder(reminderId) {
   const reminder = state.scheduledReminders.find((item) => String(item.id) === String(reminderId));
   if (!reminder) return;
