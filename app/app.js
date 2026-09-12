@@ -190,7 +190,7 @@ function isEligibleForAutomaticReminder(invoice) {
   const todayIso = today();
 
   if (!invoice || invoice.source !== 'cloud') return false;
-  if (!customer || customer._paused) return false;
+  if (!customer || customer.reminders_paused) return false;
   if (['paid', 'disputed', 'paused'].includes(status)) return false;
 
   if (
