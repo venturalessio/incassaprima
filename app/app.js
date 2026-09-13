@@ -699,6 +699,8 @@ async function saveInvoiceStatus() {
     return;
   }
 
+  const previousStatus = invoice.status || 'open';
+
   const update = {
     status,
     paid_at: status === 'paid' ? new Date().toISOString() : null,
@@ -714,6 +716,28 @@ async function saveInvoiceStatus() {
   if (error) {
     toast(`Errore aggiornamento stato: ${error.message}`);
     return;
+  }
+
+  await logInvoiceActivity(
+    invoice.id,
+    'invoice_status_changed',
+    `Stato fattura aggiornato da "${statusLabel(previousStatus)}" a "${statusLabel(status)}".`,
+    {
+      previous_status: previousStatus,
+      new_status: status,
+      promised_payment_date: status === 'promised' ? promiseDate : null
+    }
+  );
+
+  if (status === 'promised') {
+    await logInvoiceActivity(
+      invoice.id,
+      'payment_promise_created',
+      `Promessa di pagamento registrata per il ${dateIt(promiseDate)}.`,
+      {
+        promised_payment_date: promiseDate
+      }
+    );
   }
 
   closeStatusModal();
