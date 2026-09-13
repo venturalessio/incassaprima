@@ -1144,7 +1144,7 @@ async function openHistory(invoice) {
   }
 
   $('historyTitle').textContent =
-    `Storico solleciti — ${invoice.customer_name || 'Cliente'}`;
+    `Storico attività — ${invoice.customer_name || 'Cliente'}`;
 
   $('historySubtitle').textContent =
     `Fattura ${invoice.invoice_number || 'senza numero'} · ${moneyFromCents(invoice.amount_cents)}`;
@@ -1154,54 +1154,112 @@ async function openHistory(invoice) {
 
   $('historyBack').style.display = 'flex';
 
-  const { data, error } = await state.supabase
-    .from('reminders')
-    .select('*')
-    .eq('invoice_id', invoice.id)
-    .order('created_at', { ascending: false });
+  const [
+    { data: reminders, error: remindersError },
+    { data: activities, error: activitiesError }
+  ] = await Promise.all([
+    state.supabase
+      .from('reminders')
+      .select('*')
+      .eq('invoice_id', invoice.id)
+      .order('created_at', { ascending: false }),
 
-  if (error) {
+    state.supabase
+      .from('invoice_activity_log')
+      .select('*')
+      .eq('invoice_id', invoice.id)
+      .order('created_at', { ascending: false })
+  ]);
+
+  if (remindersError || activitiesError) {
+    const message = remindersError?.message || activitiesError?.message;
+
     $('historyContent').innerHTML =
-      `<div class="empty">Impossibile caricare lo storico: ${escapeHtml(error.message)}</div>`;
+      `<div class="empty">Impossibile caricare lo storico: ${escapeHtml(message)}</div>`;
+
     return;
   }
 
-  if (!data || !data.length) {
+  const reminderEvents = (reminders || []).map((reminder) => ({
+    type: 'reminder',
+    created_at: reminder.created_at,
+    reminder
+  }));
+
+  const activityEvents = (activities || []).map((activity) => ({
+    type: 'activity',
+    created_at: activity.created_at,
+    activity
+  }));
+
+  const events = [...reminderEvents, ...activityEvents]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if (!events.length) {
     $('historyContent').innerHTML =
-      '<div class="empty">Nessun sollecito registrato per questa fattura.</div>';
+      '<div class="empty">Nessuna attività registrata per questa fattura.</div>';
+
     return;
   }
 
   $('historyContent').innerHTML = `
     <p class="history-count">
-      ${data.length} ${data.length === 1 ? 'sollecito registrato' : 'solleciti registrati'}
+      ${events.length} ${events.length === 1 ? 'attività registrata' : 'attività registrate'}
     </p>
 
     <div class="history-list">
-      ${data.map((reminder) => `
-        <article class="history-item">
-          <div class="history-item-head">
-            <strong>${escapeHtml(reminderLabel(reminder.template_key))}</strong>
-            <span class="badge ${reminder.status === 'sent' ? 'paid' : 'upcoming'}">
-              ${escapeHtml(reminderStatusLabel(reminder.status))}
-            </span>
-          </div>
+      ${events.map((event) => {
+        if (event.type === 'reminder') {
+          const reminder = event.reminder;
 
-          <p class="history-meta">
-            ${dateTimeIt(reminder.created_at)}
-            · ${escapeHtml(channelLabel(reminder.channel))}
-            ${reminder.recipient_email ? ` · ${escapeHtml(reminder.recipient_email)}` : ''}
-          </p>
+          return `
+            <article class="history-item">
+              <div class="history-item-head">
+                <strong>${escapeHtml(reminderLabel(reminder.template_key))}</strong>
 
-          <details>
-            <summary>Visualizza testo registrato</summary>
-            <div class="history-message">
-              <p><strong>Oggetto:</strong> ${escapeHtml(reminder.subject_snapshot)}</p>
-              <p>${escapeWithBreaks(reminder.body_snapshot)}</p>
+                <span class="badge ${reminder.status === 'sent' ? 'paid' : 'upcoming'}">
+                  ${escapeHtml(reminderStatusLabel(reminder.status))}
+                </span>
+              </div>
+
+              <p class="history-meta">
+                ${dateTimeIt(reminder.created_at)}
+                · ${escapeHtml(channelLabel(reminder.channel))}
+                ${reminder.recipient_email
+                  ? ` · ${escapeHtml(reminder.recipient_email)}`
+                  : ''}
+              </p>
+
+              <details>
+                <summary>Visualizza testo registrato</summary>
+
+                <div class="history-message">
+                  <p><strong>Oggetto:</strong> ${escapeHtml(reminder.subject_snapshot)}</p>
+                  <p>${escapeWithBreaks(reminder.body_snapshot)}</p>
+                </div>
+              </details>
+            </article>
+          `;
+        }
+
+        const activity = event.activity;
+
+        return `
+          <article class="history-item">
+            <div class="history-item-head">
+              <strong>${escapeHtml(activity.message)}</strong>
+
+              <span class="badge upcoming">
+                Attività
+              </span>
             </div>
-          </details>
-        </article>
-      `).join('')}
+
+            <p class="history-meta">
+              ${dateTimeIt(activity.created_at)}
+            </p>
+          </article>
+        `;
+      }).join('')}
     </div>
   `;
 }
