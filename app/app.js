@@ -2158,6 +2158,7 @@ $('rulesBack').addEventListener('click', (event) => {
 });
 
 $('closeCustomersBtn').addEventListener('click', closeCustomers);
+    $('customersBackBtn').addEventListener('click', closeCustomers);
 $('customersBack').addEventListener('click', (event) => {
   if (event.target === $('customersBack')) closeCustomers();
 });
