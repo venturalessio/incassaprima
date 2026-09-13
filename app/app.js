@@ -1888,9 +1888,33 @@ function renderApprovalQueue() {
               <span class="badge due">Da approvare</span>
             </div>
             <div class="approval-actions">
-              <button type="button" class="small secondary" data-approval-op="cancel" data-reminder-id="${reminder.id}">Annulla</button>
-              <button type="button" class="small violet" data-approval-op="approve" data-reminder-id="${reminder.id}">Apri e approva</button>
-            </div>
+  <button
+    type="button"
+    class="small secondary"
+    data-approval-op="history"
+    data-invoice-id="${invoice.id}"
+  >
+    Storico
+  </button>
+
+  <button
+    type="button"
+    class="small secondary"
+    data-approval-op="cancel"
+    data-reminder-id="${reminder.id}"
+  >
+    Annulla
+  </button>
+
+  <button
+    type="button"
+    class="small violet"
+    data-approval-op="approve"
+    data-reminder-id="${reminder.id}"
+  >
+    Apri e approva
+  </button>
+</div>
           </article>`;
       }).join('')}
     </div>`;
