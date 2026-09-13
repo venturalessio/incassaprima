@@ -685,7 +685,9 @@ async function saveInvoiceStatus() {
       (item) => String(item.id) === String(invoice.id)
     );
 
-    if (!local) return;
+    if (!local) {
+      return;
+    }
 
     local.status = status;
     local.paid = status === 'paid';
@@ -742,9 +744,56 @@ async function saveInvoiceStatus() {
     );
   }
 
+  const promiseIsFuture =
+    status === 'promised' &&
+    promiseDate >= today();
+
+  const mustCancelScheduledReminders =
+    status === 'paid' ||
+    status === 'disputed' ||
+    status === 'paused' ||
+    promiseIsFuture;
+
+  if (mustCancelScheduledReminders) {
+    const { data: cancelledReminders, error: cancelError } =
+      await state.supabase
+        .from('reminders')
+        .update({ status: 'cancelled' })
+        .eq('invoice_id', invoice.id)
+        .eq('status', 'scheduled')
+        .select('id, template_key');
+
+    if (cancelError) {
+      console.error(
+        'Errore annullamento bozze fattura:',
+        cancelError.message
+      );
+    } else if (cancelledReminders && cancelledReminders.length) {
+      await Promise.all(
+        cancelledReminders.map((reminder) =>
+          logInvoiceActivity(
+            invoice.id,
+            'reminder_cancelled',
+            `Bozza ${scheduledReminderLabel(reminder.template_key)} annullata: fattura ${statusLabel(status).toLowerCase()}.`,
+            {
+              reminder_id: reminder.id,
+              reminder_template_key: reminder.template_key,
+              cancellation_reason: status
+            }
+          )
+        )
+      );
+    }
+  }
+
   closeStatusModal();
   await loadCloudData();
-  toast('Stato fattura aggiornato.');
+
+  toast(
+    mustCancelScheduledReminders
+      ? 'Stato aggiornato e bozze attive annullate.'
+      : 'Stato fattura aggiornato.'
+  );
 }
 
   async function deleteInvoice(invoice) {
