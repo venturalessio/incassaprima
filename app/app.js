@@ -1960,12 +1960,65 @@ function findInvoiceById(invoiceId) {
     (invoice) => String(invoice.id) === String(invoiceId)
   );
 }
-function openScheduledReminder(reminderId) {
-  const reminder = state.scheduledReminders.find((item) => String(item.id) === String(reminderId));
-  if (!reminder) return;
+async function openScheduledReminder(reminderId) {
+  const reminder = state.scheduledReminders.find(
+    (item) => String(item.id) === String(reminderId)
+  );
+
+  if (!reminder) {
+    return;
+  }
+
   const invoice = findInvoiceById(reminder.invoice_id);
+
   if (!invoice) {
     toast('La fattura associata a questa bozza non è disponibile.');
+    return;
+  }
+
+  const status = invoiceStatus(invoice);
+  const hasValidPromise =
+    status === 'promised' &&
+    invoice.promised_payment_date &&
+    invoice.promised_payment_date >= today();
+
+  if (
+    status === 'paid' ||
+    status === 'disputed' ||
+    status === 'paused' ||
+    hasValidPromise
+  ) {
+    const { error } = await state.supabase
+      .from('reminders')
+      .update({ status: 'cancelled' })
+      .eq('id', reminder.id)
+      .eq('status', 'scheduled');
+
+    if (error) {
+      toast(`Impossibile annullare la bozza: ${error.message}`);
+      return;
+    }
+
+    await logInvoiceActivity(
+      reminder.invoice_id,
+      'reminder_cancelled',
+      `Bozza annullata: fattura ora ${statusLabel(status)}.`,
+      {
+        reminder_id: reminder.id,
+        reminder_template_key: reminder.template_key,
+        cancellation_reason: status
+      }
+    );
+
+    await loadScheduledReminders();
+    renderApprovalQueue();
+
+    toast(
+      hasValidPromise
+        ? 'Bozza annullata: è presente una promessa di pagamento futura.'
+        : `Bozza annullata: fattura ${statusLabel(status).toLowerCase()}.`
+    );
+
     return;
   }
 
@@ -1973,11 +2026,9 @@ function openScheduledReminder(reminderId) {
   closeApprovalQueue();
   openReminder(invoice, reminder.template_key);
 
-  // Ripristina esattamente il testo della bozza programmata.
   $('mailSubject').value = reminder.subject_snapshot;
   $('mailBody').value = reminder.body_snapshot;
 }
-
   function openRules() {
   if (!state.session || !state.organization) {
     toast('Accedi al cloud per modificare le regole di sollecito.');
