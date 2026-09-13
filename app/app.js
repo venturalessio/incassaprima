@@ -1484,7 +1484,9 @@ async function saveCustomer() {
 function getPriorityInfo(invoice) {
   const status = invoiceStatus(invoice);
   const days = diffDays(invoice);
-
+if (status === 'paid') {
+  return null;
+}
   const firstDays = Number(
     state.reminderSettings?.first_reminder_after_days || 3
   );
