@@ -1244,22 +1244,47 @@ async function openHistory(invoice) {
 
         const activity = event.activity;
 
-        return `
-          <article class="history-item">
-            <div class="history-item-head">
-              <strong>${escapeHtml(activity.message)}</strong>
+const activityBadge = {
+  reminder_scheduled: {
+    label: 'Bozza proposta',
+    className: 'due'
+  },
+  reminder_cancelled: {
+    label: 'Annullata',
+    className: 'paused'
+  },
+  reminder_approved: {
+    label: 'Approvata',
+    className: 'paid'
+  },
+  invoice_status_changed: {
+    label: 'Stato aggiornato',
+    className: 'upcoming'
+  },
+  payment_promise_created: {
+    label: 'Promessa pagamento',
+    className: 'due'
+  }
+}[activity.event_type] || {
+  label: 'Attività',
+  className: 'upcoming'
+};
 
-              <span class="badge upcoming">
-                Attività
-              </span>
-            </div>
+return `
+  <article class="history-item">
+    <div class="history-item-head">
+      <strong>${escapeHtml(activity.message)}</strong>
 
-            <p class="history-meta">
-              ${dateTimeIt(activity.created_at)}
-            </p>
-          </article>
-        `;
-      }).join('')}
+      <span class="badge ${activityBadge.className}">
+        ${escapeHtml(activityBadge.label)}
+      </span>
+    </div>
+
+    <p class="history-meta">
+      ${dateTimeIt(activity.created_at)}
+    </p>
+  </article>
+`;      }).join('')}
     </div>
   `;
 }
