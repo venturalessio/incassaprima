@@ -1546,6 +1546,11 @@ if (status === 'paid') {
 
   return null;
 }
+  function hasScheduledReminder(invoice) {
+  return state.scheduledReminders.some(
+    (reminder) => String(reminder.invoice_id) === String(invoice.id)
+  );
+}
   function renderPriorityDashboard() {
   const content = $('priorityContent');
   const summary = $('prioritySummary');
@@ -1647,12 +1652,16 @@ if (status === 'paid') {
             </div>
 
             <div class="priority-action">
-              ${
-                info.type === 'critical' || info.type === 'high'
-                  ? `<button type="button" class="small violet" data-priority-op="remind" data-priority-id="${invoice.id}">Sollecito</button>`
-                  : `<button type="button" class="small secondary" data-priority-op="status" data-priority-id="${invoice.id}">Apri stato</button>`
-              }
-            </div>
+  ${(() => {
+    const hasDraft = hasScheduledReminder(invoice);
+    if (info.type === 'critical' || info.type === 'high') {
+      return hasDraft
+        ? `<button type="button" class="small violet" data-priority-op="draft" data-priority-id="${invoice.id}">Apri bozza</button>`
+        : `<button type="button" class="small violet" data-priority-op="remind" data-priority-id="${invoice.id}">Sollecito</button>`;
+    }
+    return `<button type="button" class="small secondary" data-priority-op="status" data-priority-id="${invoice.id}">Apri stato</button>`;
+  })()}
+</div>
           </article>
         `;
       }).join('')}
@@ -1687,16 +1696,18 @@ async function loadScheduledReminders() {
   if (!state.session || !state.organization) {
     state.scheduledReminders = [];
     updateApprovalBadge();
+    renderPriorityDashboard();
     return;
   }
 
   const invoiceIds = state.invoices.map((invoice) => invoice.id);
 
-  if (!invoiceIds.length) {
-    state.scheduledReminders = [];
-    updateApprovalBadge();
-    return;
-  }
+if (!invoiceIds.length) {
+  state.scheduledReminders = [];
+  updateApprovalBadge();
+  renderPriorityDashboard();
+  return;
+}
 
   const { data, error } = await state.supabase
     .from('reminders')
@@ -1713,6 +1724,7 @@ async function loadScheduledReminders() {
   }
 
   updateApprovalBadge();
+renderPriorityDashboard();
 }
 
 function updateApprovalBadge() {
@@ -2062,6 +2074,15 @@ $('priorityContent').addEventListener('click', (event) => {
 
   if (button.dataset.priorityOp === 'remind') {
     openReminder(invoice);
+  }
+
+  if (button.dataset.priorityOp === 'draft') {
+    const reminder = state.scheduledReminders.find(
+      (item) => String(item.invoice_id) === String(invoice.id)
+    );
+    if (reminder) {
+      openScheduledReminder(reminder.id);
+    }
   }
 
   if (button.dataset.priorityOp === 'status') {
