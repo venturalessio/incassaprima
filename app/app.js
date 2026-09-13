@@ -1782,10 +1782,12 @@ async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) 
     una nuova bozza automatica.
   */
   const alreadyHandled = new Set(
-    (allReminders || []).map(
+  allReminders
+    .filter((reminder) => reminder.status !== 'cancelled')
+    .map(
       (reminder) => `${reminder.invoice_id}:${reminder.template_key}`
     )
-  );
+);
 
   const candidates = state.invoices
     .filter((invoice) => isEligibleForAutomaticReminder(invoice))
