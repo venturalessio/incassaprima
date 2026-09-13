@@ -147,11 +147,29 @@ Cordiali saluti.`
     el.className = `sync-status ${type}`;
   }
 
-  function diffDays(invoice) {
-    const due = new Date(`${invoice.due_date || invoice.due}T00:00:00`).getTime();
-    const now = new Date(`${today()}T00:00:00`).getTime();
-    return Math.ceil((now - due) / 86400000);
+  function parseDateOnly(value) {
+  const [year, month, day] = String(value || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+
+  if (!year || !month || !day) {
+    return null;
   }
+
+  return new Date(year, month - 1, day);
+}
+
+function diffDays(invoice) {
+  const due = parseDateOnly(invoice.due_date || invoice.due);
+  const currentDay = parseDateOnly(today());
+
+  if (!due || !currentDay) {
+    return 0;
+  }
+
+  return Math.floor((currentDay - due) / 86400000);
+}
 
   function invoiceStatus(invoice) {
     const rawStatus = invoice.status || (invoice.paid ? 'paid' : 'open');
