@@ -595,7 +595,23 @@
   .rules-grid {
     grid-template-columns: 1fr;
   }
-}  </style>
+}  
+  .customer-mobile-back {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .customer-mobile-back {
+    display: block;
+    margin: 0 0 12px;
+  }
+
+  .customer-mobile-back button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+  </style>
 </head>
 <body>
 <main class="app">
@@ -804,7 +820,15 @@
         aria-label="Chiudi"
       >×</button>
     </div>
-
+<div class="customer-mobile-back">
+  <button
+    type="button"
+    id="customersBackBtn"
+    class="secondary"
+  >
+    ← Torna alla schermata principale
+  </button>
+</div>
     <div class="customer-toolbar">
       <input id="customerSearch" placeholder="Cerca cliente, email o PEC">
       <button type="button" id="newCustomerBtn" class="secondary">Nuovo cliente</button>
