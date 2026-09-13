@@ -544,31 +544,20 @@
   }
 
   .modalback {
-    align-items: flex-start;
-    overflow-y: auto;
-    padding: 10px;
-    -webkit-overflow-scrolling: touch;
-  }
+  align-items: center;
+  overflow: hidden;
+  padding: 10px;
+}
 
-  .modal {
-    width: 100%;
-    max-height: none;
-    min-height: min-content;
-    margin: auto 0;
-    padding: 16px;
-    overflow: visible;
-  }
-
-  .modalhead {
-    position: sticky;
-    top: -16px;
-    z-index: 2;
-    margin: -16px -16px 12px;
-    padding: 16px;
-    background: #fff;
-    border-bottom: 1px solid var(--line);
-  }
-
+.modal {
+  width: 100%;
+  max-height: calc(100dvh - 20px);
+  margin: 0;
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+  
   .close {
     flex: 0 0 auto;
     min-width: 44px;
