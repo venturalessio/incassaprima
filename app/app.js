@@ -2180,11 +2180,29 @@ $('approvalBack').addEventListener('click', (event) => {
 });
 $('approvalContent').addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-approval-op]');
-  if (!button) return;
-  if (button.dataset.approvalOp === 'cancel') await cancelScheduledReminder(button.dataset.reminderId);
-  if (button.dataset.approvalOp === 'approve') openScheduledReminder(button.dataset.reminderId);
-});
 
+  if (!button) {
+    return;
+  }
+
+  if (button.dataset.approvalOp === 'history') {
+    const invoice = findInvoice(button.dataset.invoiceId);
+
+    if (invoice) {
+      openHistory(invoice);
+    }
+
+    return;
+  }
+
+  if (button.dataset.approvalOp === 'cancel') {
+    await cancelScheduledReminder(button.dataset.reminderId);
+  }
+
+  if (button.dataset.approvalOp === 'approve') {
+    openScheduledReminder(button.dataset.reminderId);
+  }
+});
     $('closeAuthBtn').addEventListener('click', closeAuth);
     $('authBack').addEventListener('click', (event) => {
       if (event.target === $('authBack')) closeAuth();
