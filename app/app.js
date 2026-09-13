@@ -466,6 +466,7 @@ await generateScheduledReminders();
     const list = shownInvoices();
     if (!list.length) {
       $('tableWrap').innerHTML = '<div class="empty">Nessuna scadenza trovata. Aggiungine una qui sopra.</div>';
+      renderPriorityDashboard();
       return;
     }
 
@@ -506,6 +507,7 @@ const autoPausedNote = autoPaused
           }).join('')}
         </tbody>
       </table>`;
+    renderPriorityDashboard();
   }
 
   async function addInvoice() {
@@ -1479,7 +1481,182 @@ async function saveCustomer() {
     second: 'Secondo sollecito'
   }[templateKey] || templateKey;
 }
+function getPriorityInfo(invoice) {
+  const status = invoiceStatus(invoice);
+  const days = diffDays(invoice);
 
+  const firstDays = Number(
+    state.reminderSettings?.first_reminder_after_days || 3
+  );
+
+  const secondDays = Number(
+    state.reminderSettings?.second_reminder_after_days || 15
+  );
+
+  if (status === 'disputed' || status === 'paused') {
+    return {
+      type: 'blocked',
+      label: status === 'disputed' ? 'Contestata' : 'Sospesa',
+      detail: 'Solleciti automatici bloccati.',
+      priority: 1
+    };
+  }
+
+  if (
+    status === 'promised' &&
+    invoice.promised_payment_date &&
+    invoice.promised_payment_date >= today()
+  ) {
+    return {
+      type: 'promise',
+      label: 'Promessa pagamento',
+      detail: `Previsto il ${dateIt(invoice.promised_payment_date)}.`,
+      priority: 2
+    };
+  }
+
+  if (days >= secondDays) {
+    return {
+      type: 'critical',
+      label: 'Critica',
+      detail: `Scaduta da ${days} giorni: secondo sollecito previsto.`,
+      priority: 5
+    };
+  }
+
+  if (days >= firstDays) {
+    return {
+      type: 'high',
+      label: 'Da sollecitare',
+      detail: `Scaduta da ${days} giorni: primo sollecito previsto.`,
+      priority: 4
+    };
+  }
+
+  if (status === 'overdue') {
+    return {
+      type: 'high',
+      label: 'In ritardo',
+      detail: `Scaduta da ${days} giorni: sotto la soglia del primo sollecito.`,
+      priority: 3
+    };
+  }
+
+  return null;
+}
+  function renderPriorityDashboard() {
+  const content = $('priorityContent');
+  const summary = $('prioritySummary');
+
+  if (!content || !summary) {
+    return;
+  }
+
+  const source = state.session
+    ? state.invoices
+    : state.localInvoices.map(localToView);
+
+  const priorities = source
+    .map((invoice) => ({
+      invoice,
+      info: getPriorityInfo(invoice)
+    }))
+    .filter((item) => item.info)
+    .sort((a, b) => {
+      if (b.info.priority !== a.info.priority) {
+        return b.info.priority - a.info.priority;
+      }
+
+      const aDays = diffDays(a.invoice);
+      const bDays = diffDays(b.invoice);
+
+      if (bDays !== aDays) {
+        return bDays - aDays;
+      }
+
+      const aAmount = a.invoice.amount_cents !== undefined
+        ? Number(a.invoice.amount_cents)
+        : Math.round(Number(a.invoice.amount || 0) * 100);
+
+      const bAmount = b.invoice.amount_cents !== undefined
+        ? Number(b.invoice.amount_cents)
+        : Math.round(Number(b.invoice.amount || 0) * 100);
+
+      return bAmount - aAmount;
+    })
+    .slice(0, 5);
+
+  if (!priorities.length) {
+    summary.textContent = 'Nessuna urgenza';
+    content.innerHTML =
+      '<div class="empty">Nessuna fattura richiede attenzione immediata.</div>';
+    return;
+  }
+
+  const criticalCount = priorities.filter(
+    (item) => item.info.type === 'critical'
+  ).length;
+
+  const highCount = priorities.filter(
+    (item) => item.info.type === 'high'
+  ).length;
+
+  summary.textContent = criticalCount
+    ? `${criticalCount} critica${criticalCount === 1 ? '' : 'he'}`
+    : highCount
+      ? `${highCount} da sollecitare`
+      : `${priorities.length} da monitorare`;
+
+  content.innerHTML = `
+    <div class="priority-list">
+      ${priorities.map(({ invoice, info }) => {
+        const amount = invoice.amount_cents !== undefined
+          ? moneyFromCents(invoice.amount_cents)
+          : money(invoice.amount);
+
+        const customer = invoice.customer_name || invoice.customer || 'Cliente';
+        const number = invoice.invoice_number || invoice.number || 'Senza numero';
+
+        return `
+          <article class="priority-item ${info.type}">
+            <div class="priority-main">
+              <strong>${escapeHtml(customer)}</strong>
+              <small>Fattura ${escapeHtml(number)} · scadenza ${dateIt(invoice.due_date || invoice.due)}</small>
+            </div>
+
+            <div>
+              <span class="badge ${info.type === 'critical'
+                ? 'overdue'
+                : info.type === 'high'
+                  ? 'due'
+                  : info.type === 'promise'
+                    ? 'promised'
+                    : 'disputed'}">
+                ${escapeHtml(info.label)}
+              </span>
+
+              <span class="priority-detail">
+                ${escapeHtml(info.detail)}
+              </span>
+            </div>
+
+            <div class="priority-amount">
+              ${amount}
+            </div>
+
+            <div class="priority-action">
+              ${
+                info.type === 'critical' || info.type === 'high'
+                  ? `<button type="button" class="small violet" data-priority-op="remind" data-priority-id="${invoice.id}">Sollecito</button>`
+                  : `<button type="button" class="small secondary" data-priority-op="status" data-priority-id="${invoice.id}">Apri stato</button>`
+              }
+            </div>
+          </article>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
 function suggestedAutomaticModel(invoice) {
   const days = diffDays(invoice);
   const firstDays = Number(state.reminderSettings?.first_reminder_after_days || 3);
@@ -1868,7 +2045,27 @@ $('saveCustomerBtn').addEventListener('click', saveCustomer);
         $('email').value = customer.email || '';
       }
     });
+$('priorityContent').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-priority-op]');
 
+  if (!button) {
+    return;
+  }
+
+  const invoice = findInvoice(button.dataset.priorityId);
+
+  if (!invoice) {
+    return;
+  }
+
+  if (button.dataset.priorityOp === 'remind') {
+    openReminder(invoice);
+  }
+
+  if (button.dataset.priorityOp === 'status') {
+    openStatusModal(invoice);
+  }
+});
     $('tableWrap').addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-op]');
       if (!button) return;
