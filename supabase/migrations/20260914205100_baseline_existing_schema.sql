@@ -1,0 +1,16 @@
+-- Baseline dello schema esistente di IncassaPrima.
+-- Il progetto Supabase era già operativo prima dell'adozione
+-- delle migrazioni versionate nel repository.
+--
+-- Questa migrazione è intenzionalmente priva di istruzioni DDL:
+-- non crea, modifica o elimina tabelle, funzioni, policy o dati.
+--
+-- Tabelle esistenti documentate:
+-- public.organizations
+-- public.organization_members
+-- public.customers
+-- public.invoices
+-- public.reminders
+-- public.organization_reminder_settings
+-- public.invoice_activity_log
+-- public.activity_log
