@@ -999,6 +999,68 @@
     </div>
   </div>
 </div>
+  <div id="analyticsBack" class="modalback">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="analyticsTitle"
+  >
+    <div class="modalhead">
+      <div>
+        <h2 id="analyticsTitle">Analisi incassi</h2>
+        <p class="hint">
+          Crediti scaduti per anzianità e principali debitori.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="closeAnalyticsBtn"
+        class="close"
+        aria-label="Chiudi"
+      >×</button>
+    </div>
+
+    <div class="analytics-total">
+      <span>Totale scaduto</span>
+      <strong id="analyticsOverdueTotal">€0,00</strong>
+      <small id="analyticsOverdueCount">0 fatture scadute</small>
+    </div>
+
+    <h3 class="analytics-section-title">Aging crediti</h3>
+
+    <div class="aging-grid">
+      <div class="aging-card">
+        <span>0–30 giorni</span>
+        <strong id="aging0to30">€0,00</strong>
+        <small id="aging0to30Count">0 fatture</small>
+      </div>
+
+      <div class="aging-card">
+        <span>31–60 giorni</span>
+        <strong id="aging31to60">€0,00</strong>
+        <small id="aging31to60Count">0 fatture</small>
+      </div>
+
+      <div class="aging-card">
+        <span>61–90 giorni</span>
+        <strong id="aging61to90">€0,00</strong>
+        <small id="aging61to90Count">0 fatture</small>
+      </div>
+
+      <div class="aging-card aging-critical">
+        <span>Oltre 90 giorni</span>
+        <strong id="agingOver90">€0,00</strong>
+        <small id="agingOver90Count">0 fatture</small>
+      </div>
+    </div>
+
+    <h3 class="analytics-section-title">Top 10 debitori</h3>
+
+    <div id="topDebtorsContent"></div>
+  </div>
+</div>
   <div id="historyBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <div class="modalhead">
