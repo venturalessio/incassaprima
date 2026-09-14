@@ -1905,6 +1905,70 @@ function closeApprovalQueue() {
   $('approvalBack').style.display = 'none';
 }
 
+function openAnalytics() {
+  if (!state.session) {
+    toast('Accedi al cloud per visualizzare l’analisi incassi.');
+    return;
+  }
+
+  $('analyticsBack').style.display = 'flex';
+  renderAnalytics();
+}
+
+function closeAnalytics() {
+  $('analyticsBack').style.display = 'none';
+}  
+function renderAnalytics() {
+  const invoices = state.invoices || [];
+
+  if (!invoices.length) {
+    $('analyticsContent').innerHTML = `
+      <div class="customer-empty">
+        Nessuna fattura disponibile per l’analisi incassi.
+      </div>`;
+    return;
+  }
+
+  const totalCents = invoices.reduce(
+    (sum, invoice) => sum + Number(invoice.total_cents || 0),
+    0
+  );
+
+  const paidCents = invoices
+    .filter((invoice) => invoice.status === 'paid')
+    .reduce(
+      (sum, invoice) => sum + Number(invoice.total_cents || 0),
+      0
+    );
+
+  const openCents = invoices
+    .filter((invoice) => invoice.status !== 'paid')
+    .reduce(
+      (sum, invoice) => sum + Number(invoice.total_cents || 0),
+      0
+    );
+
+  $('analyticsContent').innerHTML = `
+    <div class="analytics-grid">
+      <article class="analytics-card">
+        <span>Totale fatturato</span>
+        <strong>${moneyFromCents(totalCents)}</strong>
+        <small>${invoices.length} fatture registrate</small>
+      </article>
+
+      <article class="analytics-card">
+        <span>Incassato</span>
+        <strong style="color:#15803d">${moneyFromCents(paidCents)}</strong>
+        <small>Fatture saldate</small>
+      </article>
+
+      <article class="analytics-card">
+        <span>Da incassare</span>
+        <strong style="color:${openCents ? '#b45309' : '#15803d'}">${moneyFromCents(openCents)}</strong>
+        <small>Fatture non ancora saldate</small>
+      </article>
+    </div>`;
+}  
 function renderApprovalQueue() {
   const reminders = state.scheduledReminders;
   if (!reminders.length) {
