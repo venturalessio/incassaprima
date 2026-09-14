@@ -2213,6 +2213,7 @@ async function saveRules() {
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
     $('customersBtn').addEventListener('click', openCustomers);
+    $('analyticsBtn').addEventListener('click', openAnalytics);
     $('rulesBtn').addEventListener('click', openRules);
 $('closeRulesBtn').addEventListener('click', closeRules);
 $('cancelRulesBtn').addEventListener('click', closeRules);
@@ -2342,6 +2343,10 @@ document.querySelectorAll('input[name="invoiceStatus"]').forEach((input) => {
 $('closeApprovalBtn').addEventListener('click', closeApprovalQueue);
 $('approvalBack').addEventListener('click', (event) => {
   if (event.target === $('approvalBack')) closeApprovalQueue();
+});
+$('closeAnalyticsBtn').addEventListener('click', closeAnalytics);
+$('analyticsBack').addEventListener('click', (event) => {
+  if (event.target === $('analyticsBack')) closeAnalytics();
 });
 $('approvalContent').addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-approval-op]');
