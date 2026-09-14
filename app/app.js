@@ -1919,56 +1919,131 @@ function closeAnalytics() {
   $('analyticsBack').style.display = 'none';
 }  
 function renderAnalytics() {
-  const invoices = state.invoices || [];
+  const invoices = state.session
+    ? state.invoices
+    : state.localInvoices.map(localToView);
 
-  if (!invoices.length) {
-    $('analyticsContent').innerHTML = `
-      <div class="customer-empty">
-        Nessuna fattura disponibile per l’analisi incassi.
+  const overdueInvoices = invoices.filter(
+    (invoice) => invoiceStatus(invoice) === 'overdue'
+  );
+
+  let overdueCents = 0;
+
+  const aging = {
+    from0to30: { cents: 0, count: 0 },
+    from31to60: { cents: 0, count: 0 },
+    from61to90: { cents: 0, count: 0 },
+    over90: { cents: 0, count: 0 }
+  };
+
+  const debtors = new Map();
+
+  overdueInvoices.forEach((invoice) => {
+    const cents = invoice.amount_cents !== undefined
+      ? Number(invoice.amount_cents || 0)
+      : Math.round(Number(invoice.amount || 0) * 100);
+
+    const days = diffDays(invoice);
+    const customer = invoice.customer_name || invoice.customer || 'Cliente';
+
+    overdueCents += cents;
+
+    if (days <= 30) {
+      aging.from0to30.cents += cents;
+      aging.from0to30.count += 1;
+    } else if (days <= 60) {
+      aging.from31to60.cents += cents;
+      aging.from31to60.count += 1;
+    } else if (days <= 90) {
+      aging.from61to90.cents += cents;
+      aging.from61to90.count += 1;
+    } else {
+      aging.over90.cents += cents;
+      aging.over90.count += 1;
+    }
+
+    const current = debtors.get(customer) || {
+      name: customer,
+      cents: 0,
+      count: 0,
+      oldestDays: 0
+    };
+
+    current.cents += cents;
+    current.count += 1;
+    current.oldestDays = Math.max(current.oldestDays, days);
+
+    debtors.set(customer, current);
+  });
+
+  $('analyticsOverdueTotal').textContent = moneyFromCents(overdueCents);
+
+  $('analyticsOverdueCount').textContent =
+    `${overdueInvoices.length} fattur${
+      overdueInvoices.length === 1 ? 'a scaduta' : 'e scadute'
+    }`;
+
+  $('aging0to30').textContent = moneyFromCents(aging.from0to30.cents);
+  $('aging0to30Count').textContent =
+    `${aging.from0to30.count} fattur${
+      aging.from0to30.count === 1 ? 'a' : 'e'
+    }`;
+
+  $('aging31to60').textContent = moneyFromCents(aging.from31to60.cents);
+  $('aging31to60Count').textContent =
+    `${aging.from31to60.count} fattur${
+      aging.from31to60.count === 1 ? 'a' : 'e'
+    }`;
+
+  $('aging61to90').textContent = moneyFromCents(aging.from61to90.cents);
+  $('aging61to90Count').textContent =
+    `${aging.from61to90.count} fattur${
+      aging.from61to90.count === 1 ? 'a' : 'e'
+    }`;
+
+  $('agingOver90').textContent = moneyFromCents(aging.over90.cents);
+  $('agingOver90Count').textContent =
+    `${aging.over90.count} fattur${
+      aging.over90.count === 1 ? 'a' : 'e'
+    }`;
+
+  const topDebtors = [...debtors.values()]
+    .sort((a, b) => b.cents - a.cents)
+    .slice(0, 10);
+
+  if (!topDebtors.length) {
+    $('topDebtorsContent').innerHTML = `
+      <div class="analytics-empty">
+        Nessuna fattura scaduta al momento.
       </div>`;
     return;
   }
 
-  const totalCents = invoices.reduce(
-    (sum, invoice) => sum + Number(invoice.total_cents || 0),
-    0
-  );
+  $('topDebtorsContent').innerHTML = `
+    <div class="top-debtors-list">
+      ${topDebtors.map((debtor, index) => `
+        <article class="top-debtor-row">
+          <span class="top-debtor-rank">${index + 1}</span>
 
-  const paidCents = invoices
-    .filter((invoice) => invoice.status === 'paid')
-    .reduce(
-      (sum, invoice) => sum + Number(invoice.total_cents || 0),
-      0
-    );
+          <div class="top-debtor-main">
+            <strong>${escapeHtml(debtor.name)}</strong>
+            <small>
+              ${debtor.count} fattur${
+                debtor.count === 1 ? 'a' : 'e'
+              } scadut${
+                debtor.count === 1 ? 'a' : 'e'
+              } · fino a ${debtor.oldestDays} giorni di ritardo
+            </small>
+          </div>
 
-  const openCents = invoices
-    .filter((invoice) => invoice.status !== 'paid')
-    .reduce(
-      (sum, invoice) => sum + Number(invoice.total_cents || 0),
-      0
-    );
-
-  $('analyticsContent').innerHTML = `
-    <div class="analytics-grid">
-      <article class="analytics-card">
-        <span>Totale fatturato</span>
-        <strong>${moneyFromCents(totalCents)}</strong>
-        <small>${invoices.length} fatture registrate</small>
-      </article>
-
-      <article class="analytics-card">
-        <span>Incassato</span>
-        <strong style="color:#15803d">${moneyFromCents(paidCents)}</strong>
-        <small>Fatture saldate</small>
-      </article>
-
-      <article class="analytics-card">
-        <span>Da incassare</span>
-        <strong style="color:${openCents ? '#b45309' : '#15803d'}">${moneyFromCents(openCents)}</strong>
-        <small>Fatture non ancora saldate</small>
-      </article>
+          <div class="top-debtor-amount">
+            ${moneyFromCents(debtor.cents)}
+          </div>
+        </article>
+      `).join('')}
     </div>`;
-}  
+}
+
 function renderApprovalQueue() {
   const reminders = state.scheduledReminders;
   if (!reminders.length) {
