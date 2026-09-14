@@ -600,6 +600,32 @@
     min-height: 44px;
   }
 }
+  .stat-button {
+  width: 100%;
+  border: 1px solid var(--line);
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.stat-button small {
+  display: block;
+  margin-top: 8px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-button:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 3px 10px #2563eb18;
+}
+
+.stat-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
   </style>
 </head>
 <body>
@@ -626,7 +652,16 @@
 
   <section class="stats">
     <div class="stat"><span>Da incassare</span><strong id="openTotal">€0,00</strong></div>
-    <div class="stat"><span>Scaduto</span><strong id="overdueTotal">€0,00</strong></div>
+    <button
+  type="button"
+  class="stat stat-button"
+  id="analyticsBtn"
+  aria-label="Apri analisi incassi"
+>
+  <span>Scaduto</span>
+  <strong id="overdueTotal">€0,00</strong>
+  <small>Apri analisi →</small>
+</button>
     <div class="stat"><span>Fatture scadute</span><strong id="overdueCount">0</strong></div>
     <div class="stat"><span>Incassato</span><strong id="paidTotal">€0,00</strong></div>
   </section>
