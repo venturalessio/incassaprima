@@ -626,6 +626,145 @@
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
 }
+  .analytics-total {
+  margin: 16px 0;
+  padding: 15px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+}
+
+.analytics-total span,
+.analytics-total small {
+  display: block;
+  color: #3730a3;
+}
+
+.analytics-total span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-total strong {
+  display: block;
+  margin: 5px 0 3px;
+  color: #312e81;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-total small {
+  font-size: 12px;
+}
+
+.analytics-section-title {
+  margin: 20px 0 10px;
+  font-size: 15px;
+}
+
+.aging-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.aging-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.aging-card span,
+.aging-card small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.aging-card strong {
+  display: block;
+  margin: 5px 0 3px;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aging-critical {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.aging-critical strong {
+  color: var(--red);
+}
+
+.top-debtors-list {
+  display: grid;
+  gap: 8px;
+}
+
+.top-debtor-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+}
+
+.top-debtor-rank {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.top-debtor-main strong,
+.top-debtor-main small {
+  display: block;
+}
+
+.top-debtor-main small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.top-debtor-amount {
+  text-align: right;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-empty {
+  padding: 22px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .aging-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .top-debtor-row {
+    grid-template-columns: 32px 1fr;
+  }
+
+  .top-debtor-amount {
+    grid-column: 2;
+    text-align: left;
+  }
+}
   </style>
 </head>
 <body>
