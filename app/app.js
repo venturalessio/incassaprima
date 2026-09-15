@@ -150,16 +150,7 @@ Cordiali saluti.`
 }
 
 function showImportSummary(message) {
-  const back = $('importSummaryBack');
-  const content = $('importSummaryContent');
-
-  if (!back || !content) {
-    toast(message, true);
-    return;
-  }
-
-  content.textContent = message;
-  back.style.display = 'flex';
+  window.alert(`Importazione CSV completata\n\n${message}`);
 }
 
 function closeImportSummary() {
