@@ -1232,6 +1232,39 @@
   </div>
 </div>
 
+<div id="importSummaryBack" class="modal-back">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="importSummaryTitle"
+  >
+    <div class="modal-head">
+      <div>
+        <h2 id="importSummaryTitle">Importazione CSV completata</h2>
+        <p class="hint">Riepilogo dell’operazione di importazione.</p>
+      </div>
+
+      <button
+        type="button"
+        id="closeImportSummaryBtn"
+        class="close"
+        aria-label="Chiudi riepilogo importazione"
+      >
+        ×
+      </button>
+    </div>
+
+    <div id="importSummaryContent" class="history-content"></div>
+
+    <div class="modal-actions">
+      <button type="button" id="closeImportSummaryActionBtn">
+        Chiudi
+      </button>
+    </div>
+  </div>
+</div>
+  
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
