@@ -135,13 +135,16 @@ Cordiali saluti.`
   const el = $('toast');
   if (!el) return;
 
+  clearTimeout(window.__incassaToast);
+  window.__incassaToast = null;
+
   el.textContent = message;
   el.style.display = 'block';
-  clearTimeout(window.__incassaToast);
 
   if (!persistent) {
     window.__incassaToast = setTimeout(() => {
       el.style.display = 'none';
+      window.__incassaToast = null;
     }, 2800);
   }
 }
