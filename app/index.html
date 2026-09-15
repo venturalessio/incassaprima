@@ -1,1299 +1,349 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#2563eb">
-  <meta name="description" content="IncassaPrima Pro: scadenze e solleciti di pagamento nel cloud.">
-  <title>IncassaPrima Pro — Scadenzario</title>
-  <link rel="manifest" href="../manifest.webmanifest">
-  <link rel="apple-touch-icon" href="../icons/icon-192.png">
-  <link rel="stylesheet" href="../styles.css">
-  <style>
-    :root{--bg:#f5f7fb;--card:#fff;--ink:#162033;--muted:#65718a;--line:#e5eaf2;--blue:#2563eb;--green:#047857;--amber:#b45309;--red:#b91c1c;--violet:#6d28d9}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    .app{max-width:1180px;margin:auto;padding:26px 18px 60px}.back{display:inline-block;margin-bottom:14px;color:var(--blue);font-size:14px;font-weight:700}.apphead{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.apphead h1{font-size:30px;margin:0 0 5px;font-family:inherit;letter-spacing:0}.hint{margin:0;color:var(--muted);font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.app button,.filelabel{border:0;border-radius:8px;padding:10px 13px;font-weight:650;cursor:pointer;background:var(--blue);color:white;font-size:14px}.secondary{background:#e8eefc!important;color:#1743a2!important}.danger{background:#fee2e2!important;color:#991b1b!important}.violet{background:#ede9fe!important;color:#5b21b6!important}.filelabel input{display:none}.sync-status{display:inline-block;margin-top:10px;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:650;background:#e8eefc;color:#1743a2}.sync-status.success{background:#d1fae5;color:#047857}.sync-status.warning{background:#ffedd5;color:#b45309}.sync-status.error{background:#fee2e2;color:#b91c1c}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.stat,.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px #11182708}.stat{padding:16px}.stat span{display:block;color:var(--muted);font-size:13px}.stat strong{display:block;font-size:24px;margin-top:6px}.panel{padding:18px;margin-top:16px}.panel h2{font-size:18px;margin:0 0 14px}.formgrid{display:grid;grid-template-columns:1.25fr 1.05fr .82fr .82fr .9fr;gap:10px;align-items:start}.field{display:flex;flex-direction:column;gap:5px}.field label{color:var(--muted);font-size:12px;font-weight:650}.field input,.field select,.field textarea{width:100%;border:1px solid #ccd5e1;border-radius:8px;padding:10px;background:white;font:inherit;color:var(--ink)}.field textarea{min-height:112px;resize:vertical}.smallhint{margin:0;color:var(--muted);font-size:11px}.toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.filters input,.filters select{border:1px solid #ccd5e1;border-radius:8px;padding:9px;background:white;font:inherit}.filters input{width:230px}table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--muted);font-size:12px;padding:10px 8px;border-bottom:1px solid var(--line)}td{padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:top}.amount{font-variant-numeric:tabular-nums;font-weight:700}.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.due{background:#ffedd5;color:var(--amber)}.overdue{background:#fee2e2;color:var(--red)}.paid{background:#d1fae5;color:var(--green)}.upcoming{background:#dbeafe;color:#1d4ed8}.promised{background:#ede9fe;color:#6d28d9}.disputed{background:#f3f4f6;color:#4b5563}.paused{background:#fef3c7;color:#92400e}.rowactions{display:flex;gap:6px;flex-wrap:wrap}.app button.small{padding:6px 8px;font-size:12px}.empty{padding:26px;color:var(--muted);text-align:center}.modelgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.modelcard{border:1px solid var(--line);border-radius:10px;padding:13px}.modelcard h3{font-size:15px;margin:0 0 4px}.modelcard p{font-size:12px;color:var(--muted);margin:0 0 10px}.modalback{position:fixed;inset:0;background:#11182788;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:14px;padding:20px;box-shadow:0 20px 60px #0006}.modalhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.modal h2{margin:0;font-size:20px}.close{background:#eef2f7!important;color:#374151!important;font-size:20px!important;line-height:20px;padding:7px 10px!important}.recommendation{background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:9px;padding:10px 12px;margin:14px 0}.modal .field{margin-top:12px}.modalactions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:16px 0 6px}.auth-tabs button{background:#eef2f7!important;color:#374151!important}.auth-tabs button.active{background:var(--blue)!important;color:white!important}.auth-form{display:none}.auth-form.active{display:block}.auth-note{margin-top:15px;padding:10px 12px;background:#f8fafc;border-radius:8px;color:var(--muted);font-size:12px;line-height:1.45}.toast{position:fixed;right:18px;bottom:18px;background:#172033;color:white;padding:12px 15px;border-radius:9px;display:none;box-shadow:0 8px 28px #0003;z-index:20}.footer{margin-top:18px;color:var(--muted);font-size:12px}
-    .history-count {
-  margin: 16px 0 10px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.history-list {
-  display: grid;
-  gap: 10px;
-}
-
-.history-item {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.history-item-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: center;
-}
-
-.history-meta {
-  margin: 6px 0 10px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.history-item details {
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
-}
-
-.history-item summary {
-  color: var(--blue);
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.history-message {
-  margin-top: 9px;
-  padding: 11px;
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #344054;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.history-message p {
-  margin: 0 0 9px;
-}
-
-.history-message p:last-child {
-  margin-bottom: 0;
-}
-    .status-options {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.status-option {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  cursor: pointer;
-  background: #fff;
-}
-
-.status-option:hover {
-  border-color: #93c5fd;
-  background: #f8fbff;
-}
-
-.status-option input {
-  width: auto;
-  margin: 3px 0 0;
-}
-
-.status-option strong {
-  display: block;
-  font-size: 14px;
-}
-
-.status-option span {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.promise-field {
-  display: none;
-  margin-top: 12px;
-}
-
-.promise-field.visible {
-  display: flex;
-}
-    .customer-toolbar {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  align-items: center;
-  margin: 14px 0;
-}
-
-.customer-toolbar input {
-  width: 100%;
-  border: 1px solid #ccd5e1;
-  border-radius: 8px;
-  padding: 10px;
-  font: inherit;
-}
-
-.customer-list {
-  display: grid;
-  gap: 10px;
-}
-
-.customer-row {
-  display: grid;
-  grid-template-columns: 1.5fr 0.8fr 0.8fr 0.6fr;
-  gap: 10px;
-  align-items: center;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.customer-row strong {
-  display: block;
-}
-
-.customer-row small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.customer-metric span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.customer-metric b {
-  display: block;
-  margin-top: 2px;
-  font-size: 14px;
-}
-
-.customer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.customer-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.customer-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 14px 0;
-}
-
-.customer-summary div {
-  padding: 11px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #f8fafc;
-}
-
-.customer-summary span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.customer-summary b {
-  display: block;
-  margin-top: 3px;
-  font-size: 16px;
-}
-
-.toggle-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px solid #fde68a;
-  border-radius: 9px;
-  background: #fffbeb;
-}
-
-.toggle-row input {
-  width: auto;
-  margin-top: 3px;
-}
-
-.toggle-row strong {
-  display: block;
-  font-size: 13px;
-}
-
-.toggle-row span {
-  display: block;
-  margin-top: 2px;
-  color: #92400e;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.customer-invoice-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.customer-invoice {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.customer-invoice small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-}
-
-.customer-empty {
-  padding: 25px;
-  text-align: center;
-  color: var(--muted);
-}
-    .recommendation.manual-warning {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
-}
-    #approvalCount {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-left: 4px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 11px;
-}
-
-.approval-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.approval-item {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.approval-item-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.approval-item h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.approval-item p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.approval-actions {
-  display: flex;
-  gap: 7px;
-  justify-content: flex-end;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.approval-empty {
-  padding: 26px;
-  text-align: center;
-  color: var(--muted);
-}
-    .rules-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.rule-box {
-  padding: 13px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.rule-box strong {
-  display: block;
-  font-size: 14px;
-}
-
-.rule-box span {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.locked-rule {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid #c7d2fe;
-  border-radius: 10px;
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.locked-rule strong {
-  display: block;
-  margin-bottom: 3px;
-}
-
-.rule-error {
-  display: none;
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-size: 13px;
-}
-
-.rule-error.visible {
-  display: block;
-}
-    .priority-panel {
-  margin-top: 0;
-}
-
-.priority-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
-
-.priority-head h2 {
-  margin-bottom: 4px;
-}
-
-.priority-summary {
-  display: inline-block;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.priority-list {
-  display: grid;
-  gap: 9px;
-}
-
-.priority-item {
-  display: grid;
-  grid-template-columns: 1.5fr 0.85fr 0.75fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 13px;
-  border: 1px solid var(--line);
-  border-left: 4px solid #cbd5e1;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.priority-item.critical {
-  border-left-color: var(--red);
-  background: #fffafb;
-}
-
-.priority-item.high {
-  border-left-color: var(--amber);
-  background: #fffdf8;
-}
-
-.priority-item.promise {
-  border-left-color: var(--violet);
-}
-
-.priority-item.blocked {
-  border-left-color: #6b7280;
-  background: #f9fafb;
-}
-
-.priority-main strong {
-  display: block;
-  font-size: 14px;
-}
-
-.priority-main small,
-.priority-detail {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.priority-amount {
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-
-.priority-action {
-  text-align: right;
-}
-    @media(max-width:900px){.apphead{display:block}.actions{margin-top:13px;justify-content:flex-start}.stats{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:repeat(2,1fr)}.formgrid .field:first-child{grid-column:span 2}.modelgrid{grid-template-columns:1fr}.toolbar{display:block}.filters{margin-top:10px}}
-    @media (max-width: 620px) {
-  .app {
-    padding: 22px 14px 50px;
-  }
-
-  .formgrid {
-    grid-template-columns: 1fr;
-  }
-
-  .formgrid .field:first-child {
-    grid-column: auto;
-  }
-
-  .stats {
-    gap: 8px;
-  }
-
-  .stat {
-    padding: 13px;
-  }
-
-  .stat strong {
-    font-size: 20px;
-  }
-
-  table thead {
-    display: none;
-  }
-
-  table,
-  tbody,
-  tr,
-  td {
-    display: block;
-  }
-
-  tr {
-    border-bottom: 1px solid var(--line);
-    padding: 8px 0;
-  }
-
-  td {
-    border: 0;
-    padding: 4px 0;
-  }
-
-  .filters input,
-  .filters select {
-    width: 100%;
-  }
-
-  .priority-head {
-    display: block;
-  }
-
-  .priority-summary {
-    margin-top: 9px;
-  }
-
-  .priority-item {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .priority-action {
-    text-align: left;
-  }
-
-  .modalback {
-  align-items: center;
-  overflow: hidden;
-  padding: 10px;
-}
-
-.modal {
-  width: 100%;
-  max-height: calc(100dvh - 20px);
-  margin: 0;
-  padding: 16px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-  
-  .close {
-    flex: 0 0 auto;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .customer-row {
-    grid-template-columns: 1fr;
-    gap: 7px;
-  }
-
-  .customer-actions {
-    justify-content: flex-start;
-  }
-
-  .customer-summary {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .customer-form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .rules-grid {
-    grid-template-columns: 1fr;
-  }
-}  
-  .customer-mobile-back {
-  display: none;
-}
-
-@media (max-width: 620px) {
-  .customer-mobile-back {
-    display: block;
-    margin: 0 0 12px;
-  }
-
-  .customer-mobile-back button {
-    width: 100%;
-    min-height: 44px;
-  }
-}
-  .stat-button {
-  width: 100%;
-  border: 1px solid var(--line);
-  text-align: left;
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-}
-
-.stat-button small {
-  display: block;
-  margin-top: 8px;
-  color: var(--blue);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.stat-button:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 3px 10px #2563eb18;
-}
-
-.stat-button:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 2px;
-}
-  .analytics-total {
-  margin: 16px 0;
-  padding: 15px;
-  border: 1px solid #c7d2fe;
-  border-radius: 10px;
-  background: #eef2ff;
-}
-
-.analytics-total span,
-.analytics-total small {
-  display: block;
-  color: #3730a3;
-}
-
-.analytics-total span {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.analytics-total strong {
-  display: block;
-  margin: 5px 0 3px;
-  color: #312e81;
-  font-size: 26px;
-  font-variant-numeric: tabular-nums;
-}
-
-.analytics-total small {
-  font-size: 12px;
-}
-
-.analytics-section-title {
-  margin: 20px 0 10px;
-  font-size: 15px;
-}
-
-.aging-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 9px;
-}
-
-.aging-card {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.aging-card span,
-.aging-card small {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.aging-card strong {
-  display: block;
-  margin: 5px 0 3px;
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-}
-
-.aging-critical {
-  border-color: #fecaca;
-  background: #fff7f7;
-}
-
-.aging-critical strong {
-  color: var(--red);
-}
-
-.top-debtors-list {
-  display: grid;
-  gap: 8px;
-}
-
-.top-debtor-row {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 11px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #fff;
-}
-
-.top-debtor-rank {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.top-debtor-main strong,
-.top-debtor-main small {
-  display: block;
-}
-
-.top-debtor-main small {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.top-debtor-amount {
-  text-align: right;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-
-.analytics-empty {
-  padding: 22px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 9px;
-  color: var(--muted);
-  text-align: center;
-}
-
-@media (max-width: 620px) {
-  .aging-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .top-debtor-row {
-    grid-template-columns: 32px 1fr;
-  }
-
-  .top-debtor-amount {
-    grid-column: 2;
-    text-align: left;
-  }
-}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IncassaPrima - App</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IncassaPrima">
+    <link rel="apple-touch-icon" href="../icons/icon-192x192.png">
+    <link rel="icon" type="image/png" href="../icons/icon-192x192.png">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        h1 {
+            color: #1e293b;
+            margin-bottom: 24px;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            margin: 0 0 12px 0;
+            color: #64748b;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .card .subtext {
+            color: #10b981;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .form-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .form-group input, .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #059669;
+        }
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            margin-left: 12px;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        .import-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .import-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .import-options input[type="file"] {
+            flex: 1;
+            min-width: 200px;
+        }
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .message-success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .message-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .message-info {
+            background: #f0f9ff;
+            color: #0c4a6e;
+            border: 1px solid #bae6fd;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .preview-table th, .preview-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .preview-table th {
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .duplicate-row {
+            background: #fef9c3;
+        }
+        .invalid-row {
+            background: #fee2e2;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            margin-top: 0;
+            color: #1e293b;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pagato {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+        .status-aperto {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-insoluto {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .sheet-selector {
+            margin: 16px 0;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .sheet-selector label {
+            display: block;
+            margin-bottom: 8px;
+            color: #475569;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-<main class="app">
-  <a class="back" href="../">← Torna alla presentazione</a>
+    <h1>IncassaPrima - Dashboard</h1>
 
-  <div class="apphead">
-    <div>
-      <h1>IncassaPrima <span style="color:#2563eb">Pro</span></h1>
-      <p class="hint">Scadenze, priorità e solleciti: in locale o nel cloud.</p>
-      <span id="syncStatus" class="sync-status">Caricamento…</span>
+    <div class="dashboard">
+        <div class="card">
+            <h3>Totale Incassato</h3>
+            <div class="value" id="total-incassato">€ 0</div>
+            <div class="subtext" id="incassato-vs-mese-precedente"></div>
+        </div>
+        <div class="card">
+            <h3>Da Incassare</h3>
+            <div class="value" id="da-incassare">€ 0</div>
+            <div class="subtext" id="scadenze-prossimi-7-giorni"></div>
+        </div>
+        <div class="card">
+            <h3>Fatture Emesse</h3>
+            <div class="value" id="totale-fatture">0</div>
+            <div class="subtext" id="fatture-mese-corrente"></div>
+        </div>
     </div>
-    <div class="actions">
-      <button type="button" class="secondary" id="rulesBtn">Regole</button>
-      <button type="button" class="secondary" id="approvalBtn">Da approvare<span id="approvalCount">0</span></button>
-      <button type="button" class="secondary" id="customersBtn">Clienti</button>
-      <button type="button" class="secondary" id="analyticsBtn">Analisi incassi</button>
-      <button type="button" class="secondary" id="authBtn">Accedi / Registrati</button>
-      <button type="button" class="secondary" id="signOutBtn">Esci dal cloud</button>
-      <button type="button" class="secondary" id="exportBtn">Esporta CSV</button>
-      <label class="filelabel secondary">Importa CSV<input id="importFile" type="file" accept=".csv"></label>
-      <button type="button" class="secondary" id="duplicateCheckBtn">Rileva duplicati</button>
-      <button type="button" class="danger" id="resetBtn">Azzera dati locali</button>
+
+    <div class="form-section">
+        <h2 style="margin-top: 0; color: #1e293b;">Nuova Fattura</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="cliente">Cliente</label>
+                <input type="text" id="cliente" placeholder="Nome cliente">
+            </div>
+            <div class="form-group">
+                <label for="numero-fattura">Numero Fattura</label>
+                <input type="text" id="numero-fattura" placeholder="Es. 2024/001">
+            </div>
+            <div class="form-group">
+                <label for="importo">Importo (€)</label>
+                <input type="number" id="importo" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label for="data-emissione">Data Emissione</label>
+                <input type="date" id="data-emissione">
+            </div>
+            <div class="form-group">
+                <label for="data-scadenza">Data Scadenza</label>
+                <input type="date" id="data-scadenza">
+            </div>
+            <div class="form-group">
+                <label for="stato">Stato</label>
+                <select id="stato">
+                    <option value="aperto">Aperto</option>
+                    <option value="pagato">Pagato</option>
+                    <option value="insoluto">Insoluto</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="email-destinatario">Email Destinatario</label>
+                <input type="email" id="email-destinatario" placeholder="cliente@example.com">
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="aggiungiFattura()">Aggiungi Fattura</button>
+        <div id="form-message"></div>
     </div>
-  </div>
 
-  <section class="stats">
-    <div class="stat"><span>Da incassare</span><strong id="openTotal">€0,00</strong></div>
-    <div class="stat"><span>Scaduto</span><strong id="overdueTotal">€0,00</strong></div>    <div class="stat"><span>Fatture scadute</span><strong id="overdueCount">0</strong></div>
-    <div class="stat"><span>Incassato</span><strong id="paidTotal">€0,00</strong></div>
-  </section>
-  
-<section class="panel priority-panel">
-  <div class="priority-head">
-    <div>
-      <h2>Priorità incassi</h2>
-      <p class="hint">
-        Fatture ordinate per ritardo, soglie di sollecito e stato operativo.
-      </p>
-    </div>
-    <span id="prioritySummary" class="priority-summary"></span>
-  </div>
-
-  <div id="priorityContent"></div>
-</section>
-  
-  <section class="panel">
-    <h2>Nuova fattura / scadenza</h2>
-    <div class="formgrid">
-      <div class="field">
-        <label for="customerSelect">Cliente esistente</label>
-        <select id="customerSelect"><option value="">Nuovo cliente / inserisci nome</option></select>
-      </div>
-      <div class="field">
-        <label for="customer">Cliente</label>
-        <input id="customer" placeholder="es. Rossi Impianti SRL">
-      </div>
-      <div class="field">
-        <label for="email">Email cliente</label>
-        <input id="email" type="email" placeholder="amministrazione@cliente.it">
-      </div>
-      <div class="field">
-        <label for="number">Numero fattura</label>
-        <input id="number" placeholder="es. 24/2026">
-      </div>
-      <div class="field">
-        <label for="amount">Importo (€)</label>
-        <input id="amount" inputmode="decimal" placeholder="2.500,00">
-        <p class="smallhint">Esempio: 2.500,00</p>
-      </div>
-      <div class="field">
-        <label for="issueDate">Data emissione</label>
-        <input id="issueDate" type="date">
-      </div>
-      <div class="field">
-        <label for="dueDate">Scadenza</label>
-        <input id="dueDate" type="date">
-      </div>
-    </div>
-    <div style="margin-top:12px"><button type="button" id="addBtn">Aggiungi scadenza</button></div>
-  </section>
-
-  <section class="panel">
-    <div class="toolbar">
-      <h2>Scadenze</h2>
-      <div class="filters">
-        <input id="search" placeholder="Cerca cliente o fattura">
-        <select id="filter">
-          <option value="all">Tutti gli stati</option>
-          <option value="overdue">Solo scadute</option>
-          <option value="due">In scadenza (7 giorni)</option>
-          <option value="open">Da incassare</option>
-          <option value="paid">Pagate</option>
-          <option value="promised">Promessa pagamento</option>
-          <option value="disputed">Contestate</option>
-          <option value="paused">Sospese</option>
-        </select>
-      </div>
-    </div>
-    <div id="tableWrap"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Modelli sollecito</h2>
-    <p class="hint">Premendo “Sollecito” il sistema propone il tono in base ai giorni di ritardo. Puoi sempre scegliere un modello diverso e modificare il testo prima di copiarlo o aprire l’email.</p>
-    <div class="modelgrid" style="margin-top:14px">
-      <div class="modelcard"><h3>1. Promemoria cortese</h3><p>Prima della scadenza o fino a 2 giorni dopo.</p><button type="button" class="small secondary" data-preview="courtesy">Vedi modello</button></div>
-      <div class="modelcard"><h3>2. Primo sollecito</h3><p>Da 3 a 14 giorni dopo la scadenza.</p><button type="button" class="small secondary" data-preview="first">Vedi modello</button></div>
-      <div class="modelcard"><h3>3. Secondo sollecito</h3><p>Da 15 giorni dopo la scadenza.</p><button type="button" class="small secondary" data-preview="second">Vedi modello</button></div>
-    </div>
-    <p class="hint" style="margin-top:12px">Variabili disponibili: {{cliente}}, {{numero}}, {{importo}}, {{scadenza}}, {{giorni_ritardo}}</p>
-  </section>
-
-  <p class="footer">Versione Pro 1 · Gli importi cloud sono salvati come centesimi interi. IncassaPrima non sostituisce il gestionale contabile o la fatturazione elettronica.</p>
-</main>
-
-<div id="modalBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modalhead"><div><h2 id="modalTitle">Prepara sollecito</h2><p class="hint" id="modalSubtitle"></p></div><button type="button" id="closeBtn" class="close" aria-label="Chiudi">×</button></div>
-    <div id="recommendation" class="recommendation"></div>
-    <div class="field"><label for="modelChoice">Modello</label><select id="modelChoice"><option value="courtesy">1. Promemoria cortese</option><option value="first">2. Primo sollecito</option><option value="second">3. Secondo sollecito</option></select></div>
-    <div class="field"><label for="mailSubject">Oggetto</label><input id="mailSubject"></div>
-    <div class="field"><label for="mailBody">Testo email</label><textarea id="mailBody"></textarea></div>
-    <div class="modalactions"><button type="button" class="secondary" id="copyBtn">Copia testo</button><button type="button" id="emailBtn">Approva e apri email</button></div>
-  </div>
-</div>
-<div id="rulesBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="rulesTitle">Regole sollecito</h2>
-        <p class="hint">
-          Configura quando IncassaPrima prepara una bozza.
-          In questa fase nessuna email viene inviata automaticamente.
+    <div class="import-section">
+        <h2 style="margin-top: 0; color: #1e293b;">Importa Fatture</h2>
+        <p style="color: #64748b; margin-bottom: 16px;">
+            Importa fatture da file CSV o Excel. Il sistema rileveràłł automaticamente cliente, numero fattura, importo, scadenze e altri campi.
         </p>
-      </div>
+        <div class="import-options">
+            <input type="file" id="import-file" accept=".csv,.xlsx,.xls">
+            <button class="btn btn-primary" onclick="importFile()">Importa</button>
+            <button class="btn btn-secondary" onclick="exportData()">Esporta CSV</button>
+        </div>
+        
+        <div id="sheet-selector-container" class="sheet-selector hidden">
+            <label for="sheet-selector">Seleziona il foglio da importare:</label>
+            <select id="sheet-selector"></select>
+            <button class="btn btn-primary" style="margin-top: 12px;" onclick="processExcelWithSheet()">Continua con questo foglio</button>
+        </div>
 
-      <button
-        type="button"
-        id="closeRulesBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
+        <div id="import-message"></div>
+        <div id="import-preview"></div>
     </div>
 
-    <div class="rules-grid">
-      <div class="field rule-box">
-        <label for="firstReminderDays">Primo sollecito</label>
-        <input id="firstReminderDays" type="number" min="1" max="60" step="1">
-        <span>Giorni dopo la scadenza per proporre il primo sollecito.</span>
-      </div>
-
-      <div class="field rule-box">
-        <label for="secondReminderDays">Secondo sollecito</label>
-        <input id="secondReminderDays" type="number" min="2" max="120" step="1">
-        <span>Giorni dopo la scadenza per proporre il secondo sollecito.</span>
-      </div>
+    <div class="modal-overlay" id="preview-modal">
+        <div class="modal">
+            <h2>Anteprima Importazione</h2>
+            <p id="preview-summary"></p>
+            <div id="preview-table-container"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closePreviewModal()">Annulla</button>
+                <button class="btn btn-primary" onclick="confirmImport()">Conferma Import</button>
+            </div>
+        </div>
     </div>
 
-    <div id="rulesError" class="rule-error"></div>
-
-    <div class="locked-rule">
-      <strong>Approvazione umana: attiva</strong>
-      Le proposte entrano nella coda “Da approvare”.
-      L’invio automatico delle email è disattivato nella fase alpha.
+    <div class="modal-overlay" id="summary-modal">
+        <div class="modal">
+            <h2>Importazione Completata</h2>
+            <div id="summary-content"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="closeSummaryModal()">Chiudi</button>
+            </div>
+        </div>
     </div>
 
-    <div class="modalactions">
-      <button type="button" class="secondary" id="cancelRulesBtn">Annulla</button>
-      <button type="button" id="saveRulesBtn">Salva regole</button>
-    </div>
-  </div>
-</div>
-  <div id="approvalBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="approvalTitle">Solleciti da approvare</h2>
-        <p class="hint">
-          Bozze create in base a ritardo, stato fattura e preferenze cliente.
-          Nessuna email viene inviata automaticamente.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        id="closeApprovalBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
-    </div>
-
-    <div id="approvalContent"></div>
-  </div>
-</div>
-  <div id="customersBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customersTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="customersTitle">Clienti</h2>
-        <p class="hint">Esposizione, scaduti e gestione solleciti per cliente.</p>
-      </div>
-
-      <button
-        type="button"
-        id="closeCustomersBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
-    </div>
-<div class="customer-mobile-back">
-  <button
-    type="button"
-    id="customersBackBtn"
-    class="secondary"
-  >
-    ← Torna alla schermata principale
-  </button>
-</div>
-    <div class="customer-toolbar">
-      <input id="customerSearch" placeholder="Cerca cliente, email o PEC">
-      <button type="button" id="newCustomerBtn" class="secondary">Nuovo cliente</button>
-    </div>
-
-    <div id="customersContent"></div>
-  </div>
-</div>
-
-<div id="customerEditBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customerEditTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="customerEditTitle">Cliente</h2>
-        <p class="hint" id="customerEditSubtitle"></p>
-      </div>
-
-      <button
-        type="button"
-        id="closeCustomerEditBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
-    </div>
-
-    <div id="customerSummary" class="customer-summary"></div>
-
-    <div class="customer-form-grid">
-      <div class="field">
-        <label for="editCustomerName">Ragione sociale / Nome</label>
-        <input id="editCustomerName" placeholder="es. Rossi Impianti SRL">
-      </div>
-
-      <div class="field">
-        <label for="editCustomerEmail">Email</label>
-        <input id="editCustomerEmail" type="email" placeholder="amministrazione@cliente.it">
-      </div>
-
-      <div class="field">
-        <label for="editCustomerPec">PEC</label>
-        <input id="editCustomerPec" type="email" placeholder="cliente@pec.it">
-      </div>
-
-      <div class="field">
-        <label for="editCustomerPhone">Telefono</label>
-        <input id="editCustomerPhone" type="tel" placeholder="es. +39 051 000000">
-      </div>
-    </div>
-
-    <div class="field" style="margin-top:10px">
-      <label for="editCustomerNotes">Note interne</label>
-      <textarea
-        id="editCustomerNotes"
-        placeholder="es. Referente, accordi di pagamento, note commerciali…"
-      ></textarea>
-    </div>
-
-    <label class="toggle-row">
-      <input id="editCustomerPaused" type="checkbox">
-      <span>
-        <strong>Sospendi solleciti automatici per questo cliente</strong>
-        <span>
-          Blocca le future automazioni. I solleciti manuali restano possibili
-          e sotto il tuo controllo.
-        </span>
-      </span>
-    </label>
-
-    <div class="modalactions">
-      <button type="button" class="secondary" id="cancelCustomerEditBtn">Annulla</button>
-      <button type="button" id="saveCustomerBtn">Salva cliente</button>
-    </div>
-
-    <div style="margin-top:22px">
-      <h3 style="font-size:15px;margin:0 0 8px">Fatture del cliente</h3>
-      <div id="customerInvoices"></div>
-    </div>
-  </div>
-</div>
-  <div id="statusBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statusTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="statusTitle">Aggiorna stato fattura</h2>
-        <p class="hint" id="statusSubtitle"></p>
-      </div>
-
-      <button type="button" id="closeStatusBtn" class="close" aria-label="Chiudi">×</button>
-    </div>
-
-    <div class="status-options">
-      <label class="status-option">
-        <input type="radio" name="invoiceStatus" value="open">
-        <span>
-          <strong>Aperta</strong>
-          <span>La fattura è da incassare; i solleciti restano disponibili.</span>
-        </span>
-      </label>
-
-      <label class="status-option">
-        <input type="radio" name="invoiceStatus" value="paid">
-        <span>
-          <strong>Pagata</strong>
-          <span>Il pagamento è stato ricevuto; non proporre altri solleciti.</span>
-        </span>
-      </label>
-
-      <label class="status-option">
-        <input type="radio" name="invoiceStatus" value="promised">
-        <span>
-          <strong>Promessa di pagamento</strong>
-          <span>Il cliente ha indicato una data prevista di saldo.</span>
-        </span>
-      </label>
-
-      <label class="status-option">
-        <input type="radio" name="invoiceStatus" value="disputed">
-        <span>
-          <strong>Contestata</strong>
-          <span>Il cliente contesta la fattura: blocca i solleciti.</span>
-        </span>
-      </label>
-
-      <label class="status-option">
-        <input type="radio" name="invoiceStatus" value="paused">
-        <span>
-          <strong>Sospesa</strong>
-          <span>Caso in attesa o da non contattare: blocca i solleciti.</span>
-        </span>
-      </label>
-    </div>
-
-    <div id="promiseField" class="field promise-field">
-      <label for="promiseDate">Data promessa di pagamento</label>
-      <input id="promiseDate" type="date">
-      <p class="smallhint">
-        Fino a questa data l’app non proporrà solleciti automatici nella futura versione Pro.
-      </p>
-    </div>
-
-    <div class="modalactions">
-      <button type="button" class="secondary" id="cancelStatusBtn">Annulla</button>
-      <button type="button" id="saveStatusBtn">Salva stato</button>
-    </div>
-  </div>
-</div>
-  <div id="analyticsBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="analyticsTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="analyticsTitle">Analisi incassi</h2>
-        <p class="hint">
-          Crediti scaduti per anzianità e principali debitori.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        id="closeAnalyticsBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
-    </div>
-
-    <div class="analytics-total">
-      <span>Totale scaduto</span>
-      <strong id="analyticsOverdueTotal">€0,00</strong>
-      <small id="analyticsOverdueCount">0 fatture scadute</small>
-    </div>
-
-    <h3 class="analytics-section-title">Aging crediti</h3>
-
-    <div class="aging-grid">
-      <div class="aging-card">
-        <span>0–30 giorni</span>
-        <strong id="aging0to30">€0,00</strong>
-        <small id="aging0to30Count">0 fatture</small>
-      </div>
-
-      <div class="aging-card">
-        <span>31–60 giorni</span>
-        <strong id="aging31to60">€0,00</strong>
-        <small id="aging31to60Count">0 fatture</small>
-      </div>
-
-      <div class="aging-card">
-        <span>61–90 giorni</span>
-        <strong id="aging61to90">€0,00</strong>
-        <small id="aging61to90Count">0 fatture</small>
-      </div>
-
-      <div class="aging-card aging-critical">
-        <span>Oltre 90 giorni</span>
-        <strong id="agingOver90">€0,00</strong>
-        <small id="agingOver90Count">0 fatture</small>
-      </div>
-    </div>
-
-    <h3 class="analytics-section-title">Top 10 debitori</h3>
-
-    <div id="topDebtorsContent"></div>
-  </div>
-</div>
-  <div id="historyBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
-    <div class="modalhead">
-      <div>
-        <h2 id="historyTitle">Storico solleciti</h2>
-        <p class="hint" id="historySubtitle"></p>
-      </div>
-
-      <button
-        type="button"
-        id="closeHistoryBtn"
-        class="close"
-        aria-label="Chiudi"
-      >×</button>
-    </div>
-
-    <div id="historyContent"></div>
-  </div>
-</div>
-<div id="authBack" class="modalback">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-    <div class="modalhead"><div><h2 id="authTitle">Accedi a IncassaPrima Pro</h2><p class="hint">Accedi per salvare scadenze e clienti nel cloud.</p></div><button type="button" id="closeAuthBtn" class="close" aria-label="Chiudi">×</button></div>
-
-    <div class="auth-tabs">
-      <button type="button" id="showSignIn" class="active">Accedi</button>
-      <button type="button" id="showSignUp">Crea account</button>
-    </div>
-
-    <div id="signInForm" class="auth-form active">
-      <div class="field"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" placeholder="nome@azienda.it"></div>
-      <div class="field"><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Almeno 8 caratteri"></div>
-      <div class="modalactions"><button type="button" id="signInBtn">Accedi al cloud</button></div>
-    </div>
-
-    <div id="signUpForm" class="auth-form">
-      <div class="field"><label for="organizationName">Nome azienda / attività</label><input id="organizationName" autocomplete="organization" placeholder="es. Rossi Impianti SRL"></div>
-      <div class="field"><label for="signupEmail">Email</label><input id="signupEmail" type="email" autocomplete="email" placeholder="nome@azienda.it"></div>
-      <div class="field"><label for="signupPassword">Password</label><input id="signupPassword" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri"></div>
-      <div class="modalactions"><button type="button" id="signUpBtn">Crea account gratuito</button></div>
-    </div>
-
-    <p class="auth-note">Durante la fase di test, i dati sono salvati nel tuo progetto Supabase e protetti dalle regole di accesso dell’account. Non inserire dati sensibili di clienti reali fino a quando non avrai completato informativa privacy, termini e misure di sicurezza della versione pubblica.</p>
-  </div>
-</div>
-
-<div id="importSummaryBack" class="modalback">
-  <div
-    class="modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="importSummaryTitle"
-  >
-    <div class="modalhead">
-      <div>
-        <h2 id="importSummaryTitle">Importazione CSV completata</h2>
-        <p class="hint">Riepilogo dell’operazione di importazione.</p>
-      </div>
-
-      <button
-        type="button"
-        id="closeImportSummaryBtn"
-        class="close"
-        aria-label="Chiudi riepilogo importazione"
-      >
-        ×
-      </button>
-    </div>
-
-    <div id="importSummaryContent" class="history-content"></div>
-
-    <div class="modalactions">
-      <button type="button" id="closeImportSummaryActionBtn">
-        Chiudi
-      </button>
-    </div>
-  </div>
-</div>
-  
-<div id="toast" class="toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
-<script>
-  (function () {
-    const showSignIn = document.getElementById('showSignIn');
-    const showSignUp = document.getElementById('showSignUp');
-    const signInForm = document.getElementById('signInForm');
-    const signUpForm = document.getElementById('signUpForm');
-
-    showSignIn.addEventListener('click', function () {
-      showSignIn.classList.add('active');
-      showSignUp.classList.remove('active');
-      signInForm.classList.add('active');
-      signUpForm.classList.remove('active');
-    });
-
-    showSignUp.addEventListener('click', function () {
-      showSignUp.classList.add('active');
-      showSignIn.classList.remove('active');
-      signUpForm.classList.add('active');
-      signInForm.classList.remove('active');
-    });
-
-    document.getElementById('signInBtn').addEventListener('click', function () {
-      document.getElementById('authEmail').value = document.getElementById('authEmail').value.trim();
-    });
-  })();
-</script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
