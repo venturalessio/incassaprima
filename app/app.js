@@ -1525,9 +1525,11 @@ async function importCsv(file) {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
       render();
 
-      showImportSummary(
-  `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
-);
+      setTimeout(() => {
+  showImportSummary(
+    `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
+  );
+}, 0);
 
       return;
     }
@@ -1613,9 +1615,11 @@ async function importCsv(file) {
     updateCustomerOptions();
     render();
 
-    showImportSummary(
-  `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`
-);
+    setTimeout(() => {
+  showImportSummary(
+    `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`
+  );
+}, 0);
   } catch (error) {
     console.error('Errore importazione CSV:', error);
     toast('Impossibile leggere o importare il CSV. Verifica il formato del file.');
