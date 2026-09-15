@@ -131,14 +131,20 @@ Cordiali saluti.`
     return Number(s);
   }
 
-  function toast(message) {
-    const el = $('toast');
-    if (!el) return;
-    el.textContent = message;
-    el.style.display = 'block';
-    clearTimeout(window.__incassaToast);
-    window.__incassaToast = setTimeout(() => { el.style.display = 'none'; }, 2800);
+  function toast(message, persistent = false) {
+  const el = $('toast');
+  if (!el) return;
+
+  el.textContent = message;
+  el.style.display = 'block';
+  clearTimeout(window.__incassaToast);
+
+  if (!persistent) {
+    window.__incassaToast = setTimeout(() => {
+      el.style.display = 'none';
+    }, 2800);
   }
+}
 
   function setStatus(message, type = 'info') {
     const el = $('syncStatus');
@@ -1506,9 +1512,9 @@ async function importCsv(file) {
       render();
 
       toast(
-        `${validRows.length} fatture importate in locale. ` +
-          `${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
-      );
+  `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`,
+  true
+);
 
       return;
     }
@@ -1595,10 +1601,9 @@ async function importCsv(file) {
     render();
 
     toast(
-      `${imported} fatture importate nel cloud. ` +
-        `${duplicateRows.length} duplicate, ${invalidRows.length} non valide` +
-        `${failed ? ` e ${failed} non salvate` : ''}.`
-    );
+  `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`,
+  true
+);
   } catch (error) {
     console.error('Errore importazione CSV:', error);
     toast('Impossibile leggere o importare il CSV. Verifica il formato del file.');
