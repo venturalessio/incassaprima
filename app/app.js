@@ -1390,6 +1390,14 @@ async function importCsv(file) {
         return;
       }
 
+      if (!invoiceNumber) {
+  invalidRows.push({
+    line,
+    reason: 'numero fattura mancante'
+  });
+  return;
+}
+
       const amount = parseItalianAmount(amountRaw);
 
       if (!Number.isFinite(amount) || amount <= 0) {
@@ -1595,6 +1603,109 @@ async function importCsv(file) {
     console.error('Errore importazione CSV:', error);
     toast('Impossibile leggere o importare il CSV. Verifica il formato del file.');
   } }
+
+function duplicateGroupKey(invoice) {
+  const customerName = String(
+    invoice.customer_name || invoice.customer || ''
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  const invoiceNumber = String(
+    invoice.invoice_number || invoice.number || ''
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  const dueDate = String(
+    invoice.due_date || invoice.due || ''
+  ).trim();
+
+  if (!customerName || !invoiceNumber || !dueDate) {
+    return null;
+  }
+
+  return `${customerName}::${invoiceNumber}::${dueDate}`;
+}
+
+function detectDuplicateInvoices() {
+  const source = state.session
+    ? state.invoices
+    : state.localInvoices.map(localToView);
+
+  const groups = new Map();
+
+  source.forEach((invoice) => {
+    const key = duplicateGroupKey(invoice);
+
+    if (!key) return;
+
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+
+    groups.get(key).push(invoice);
+  });
+
+  const duplicates = [...groups.values()]
+    .filter((invoices) => invoices.length > 1)
+    .sort((firstGroup, secondGroup) => {
+      const firstName = String(
+        firstGroup[0].customer_name || firstGroup[0].customer || ''
+      );
+
+      const secondName = String(
+        secondGroup[0].customer_name || secondGroup[0].customer || ''
+      );
+
+      return firstName.localeCompare(secondName, 'it');
+    });
+
+  if (!duplicates.length) {
+    toast('Controllo duplicati completato: nessuna fattura duplicata trovata.');
+    return;
+  }
+
+  const invoicesInvolved = duplicates.reduce(
+    (total, group) => total + group.length,
+    0
+  );
+
+  const details = duplicates
+    .slice(0, 12)
+    .map((group) => {
+      const first = group[0];
+      const customer = first.customer_name || first.customer || 'Cliente';
+      const number = first.invoice_number || first.number || 'Senza numero';
+      const dueDate = first.due_date || first.due || '—';
+      const amount =
+        first.amount_cents !== undefined
+          ? moneyFromCents(first.amount_cents)
+          : money(first.amount);
+
+      return (
+        `• ${customer} · fattura ${number} · scadenza ${dateIt(dueDate)} · ${amount}\n` +
+        `  ${group.length} record con gli stessi dati`
+      );
+    })
+    .join('\n\n');
+
+  const moreGroups =
+    duplicates.length > 12
+      ? `\n\n…e altri ${duplicates.length - 12} gruppi duplicati.`
+      : '';
+
+  window.alert(
+    `Controllo duplicati completato\n\n` +
+      `Gruppi duplicati trovati: ${duplicates.length}\n` +
+      `Fatture coinvolte: ${invoicesInvolved}\n\n` +
+      `${details}${moreGroups}\n\n` +
+      `Nessuna fattura è stata modificata o eliminata.`
+  );
+}
+
 function escapeWithBreaks(value) {
   return escapeHtml(value).replace(/\n/g, '<br>');
 }
@@ -2734,6 +2845,7 @@ async function saveRules() {
 
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
+    $('duplicateCheckBtn').addEventListener('click', detectDuplicateInvoices);
     $('customersBtn').addEventListener('click', openCustomers);
     $('analyticsBtn').addEventListener('click', openAnalytics);
     $('rulesBtn').addEventListener('click', openRules);
