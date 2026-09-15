@@ -1477,15 +1477,17 @@ async function importCsv(file) {
     });
 
     if (!validRows.length) {
-      const problems = [...invalidRows, ...duplicateRows];
+  const problems = [...invalidRows, ...duplicateRows];
 
-      toast(
-        `Nessuna fattura importabile. ${invalidRows.length} non valide, ` +
-          `${duplicateRows.length} duplicate ignorate.` +
-          formatImportProblems(problems)
-      );
-      return;
-    }
+  showImportSummary(
+    `Nessuna fattura importabile.\n\n` +
+    `${invalidRows.length} righe non valide.\n` +
+    `${duplicateRows.length} fatture duplicate ignorate.\n\n` +
+    `Dettaglio:\n${formatImportProblems(problems)}`
+  );
+
+  return;
+}
 
     const destination = state.session ? 'nel cloud' : 'in locale';
 
