@@ -1059,95 +1059,542 @@ updateApprovalBadge();
     setTimeout(() => URL.revokeObjectURL(url), 700);
   }
 
-  async function importCsv(file) {
-    if (!file) return;
+  function normalizeCsvHeader(value) {
+  return String(value || '')
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function detectCsvDelimiter(text) {
+  const firstLine = String(text || '')
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .find((line) => line.trim());
+
+  if (!firstLine) return ',';
+
+  const candidates = [',', ';', '\t'];
+  return candidates
+    .map((delimiter) => ({
+      delimiter,
+      count: firstLine.split(delimiter).length - 1
+    }))
+    .sort((a, b) => b.count - a.count)[0].delimiter;
+}
+
+function parseCsvText(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let value = '';
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"') {
+      if (quoted && next === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (!quoted && char === delimiter) {
+      row.push(value.trim());
+      value = '';
+      continue;
+    }
+
+    if (!quoted && (char === '\n' || char === '\r')) {
+      if (char === '\r' && next === '\n') {
+        index += 1;
+      }
+
+      row.push(value.trim());
+
+      if (row.some((cell) => cell !== '')) {
+        rows.push(row);
+      }
+
+      row = [];
+      value = '';
+      continue;
+    }
+
+    value += char;
+  }
+
+  row.push(value.trim());
+
+  if (row.some((cell) => cell !== '')) {
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function normalizeImportedStatus(value) {
+  const normalized = normalizeCsvHeader(value);
+
+  const statuses = {
+    open: 'open',
+    aperta: 'open',
+    daincassare: 'open',
+    unpaid: 'open',
+
+    paid: 'paid',
+    pagata: 'paid',
+    pagato: 'paid',
+
+    promised: 'promised',
+    promessapagamento: 'promised',
+    promessadipagamento: 'promised',
+
+    disputed: 'disputed',
+    contestata: 'disputed',
+    contestato: 'disputed',
+
+    paused: 'paused',
+    sospesa: 'paused',
+    sospeso: 'paused'
+  };
+
+  return statuses[normalized] || 'open';
+}
+
+function normalizeImportedDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  let year;
+  let month;
+  let day;
+
+  let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+    day = Number(match[3]);
+  } else {
+    match = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+
+    if (!match) return null;
+
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function importKey(customerName, invoiceNumber, dueDate) {
+  const customer = String(customerName || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  const number = String(invoiceNumber || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  if (!customer || !number || !dueDate) return null;
+
+  return `${customer}::${number}::${dueDate}`;
+}
+
+function currentImportInvoiceSource() {
+  return state.session
+    ? state.invoices
+    : state.localInvoices.map(localToView);
+}
+
+function buildExistingImportKeys() {
+  const keys = new Set();
+
+  currentImportInvoiceSource().forEach((invoice) => {
+    const key = importKey(
+      invoice.customer_name || invoice.customer,
+      invoice.invoice_number || invoice.number,
+      invoice.due_date || invoice.due
+    );
+
+    if (key) keys.add(key);
+  });
+
+  return keys;
+}
+
+function csvValueByAliases(row, columns, aliases) {
+  for (const alias of aliases) {
+    const index = columns[alias];
+
+    if (index !== undefined && row[index] !== undefined) {
+      return String(row[index] || '').trim();
+    }
+  }
+
+  return '';
+}
+
+function formatImportProblems(rows) {
+  if (!rows.length) return '';
+
+  const preview = rows
+    .slice(0, 8)
+    .map((row) => `• Riga ${row.line}: ${row.reason}`)
+    .join('\n');
+
+  const suffix =
+    rows.length > 8
+      ? `\n• …e altre ${rows.length - 8} righe`
+      : '';
+
+  return `\n\nDettaglio:\n${preview}${suffix}`;
+}
+
+async function importCsv(file) {
+  if (!file) return;
+
+  try {
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(Boolean);
-    if (lines.length < 2) {
-      toast('Il CSV è vuoto o non valido.');
+    const delimiter = detectCsvDelimiter(text);
+    const parsedRows = parseCsvText(text, delimiter);
+
+    if (parsedRows.length < 2) {
+      toast('Il CSV è vuoto oppure non contiene righe da importare.');
       return;
     }
 
-    const parseLine = (line) => {
-      const matches = line.match(/("(?:[^"]|"")*"|[^,]*)(?:,|$)/g) || [];
-      return matches.map((value) => value.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, ''));
-    };
+    const headerRow = parsedRows[0].map(normalizeCsvHeader);
 
-    const rows = lines.slice(1).map(parseLine).filter((values) => values.length >= 4 && values[0]);
-    if (!rows.length) {
-      toast('Nessuna riga valida trovata nel CSV.');
+    const columns = {};
+    headerRow.forEach((header, index) => {
+      if (header && columns[header] === undefined) {
+        columns[header] = index;
+      }
+    });
+
+    const customerColumn = [
+      'cliente',
+      'customer',
+      'ragionesociale',
+      'nomecliente',
+      'denominazione'
+    ].find((key) => columns[key] !== undefined);
+
+    const amountColumn = [
+      'importoeuro',
+      'importo',
+      'amount',
+      'totale',
+      'importofattura'
+    ].find((key) => columns[key] !== undefined);
+
+    const dueDateColumn = [
+      'scadenza',
+      'datascadenza',
+      'duedate',
+      'due'
+    ].find((key) => columns[key] !== undefined);
+
+    if (!customerColumn || !amountColumn || !dueDateColumn) {
+      toast(
+        'Intestazioni CSV non valide. Servono almeno: cliente, importo e scadenza.'
+      );
+      return;
+    }
+
+    const existingKeys = buildExistingImportKeys();
+    const fileKeys = new Set();
+    const validRows = [];
+    const invalidRows = [];
+    const duplicateRows = [];
+
+    parsedRows.slice(1).forEach((row, index) => {
+      const line = index + 2;
+
+      const customerName = csvValueByAliases(row, columns, [
+        'cliente',
+        'customer',
+        'ragionesociale',
+        'nomecliente',
+        'denominazione'
+      ]);
+
+      const invoiceNumber = csvValueByAliases(row, columns, [
+        'numerofattura',
+        'numero',
+        'fattura',
+        'invoicenumber',
+        'invoice'
+      ]);
+
+      const amountRaw = csvValueByAliases(row, columns, [
+        'importoeuro',
+        'importo',
+        'amount',
+        'totale',
+        'importofattura'
+      ]);
+
+      const dueDateRaw = csvValueByAliases(row, columns, [
+        'scadenza',
+        'datascadenza',
+        'duedate',
+        'due'
+      ]);
+
+      const email = csvValueByAliases(row, columns, [
+        'email',
+        'emailcliente',
+        'customeremail'
+      ]);
+
+      const statusRaw = csvValueByAliases(row, columns, [
+        'stato',
+        'status'
+      ]);
+
+      const issueDateRaw = csvValueByAliases(row, columns, [
+        'dataemissione',
+        'emissione',
+        'issuedate',
+        'issue'
+      ]);
+
+      if (!customerName) {
+        invalidRows.push({
+          line,
+          reason: 'cliente mancante'
+        });
+        return;
+      }
+
+      const amount = parseItalianAmount(amountRaw);
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        invalidRows.push({
+          line,
+          reason: 'importo non valido o non positivo'
+        });
+        return;
+      }
+
+      const dueDate = normalizeImportedDate(dueDateRaw);
+
+      if (!dueDate) {
+        invalidRows.push({
+          line,
+          reason: 'scadenza non valida; usa YYYY-MM-DD o GG/MM/AAAA'
+        });
+        return;
+      }
+
+      const issueDate = issueDateRaw
+        ? normalizeImportedDate(issueDateRaw)
+        : null;
+
+      if (issueDateRaw && !issueDate) {
+        invalidRows.push({
+          line,
+          reason: 'data emissione non valida'
+        });
+        return;
+      }
+
+      const key = importKey(customerName, invoiceNumber, dueDate);
+
+      if (key && (existingKeys.has(key) || fileKeys.has(key))) {
+        duplicateRows.push({
+          line,
+          reason: `fattura duplicata (${customerName} · ${invoiceNumber} · ${dueDate})`
+        });
+        return;
+      }
+
+      if (key) {
+        fileKeys.add(key);
+      }
+
+      validRows.push({
+        line,
+        customerName,
+        invoiceNumber,
+        amount,
+        dueDate,
+        issueDate,
+        email,
+        status: normalizeImportedStatus(statusRaw)
+      });
+    });
+
+    if (!validRows.length) {
+      const problems = [...invalidRows, ...duplicateRows];
+
+      toast(
+        `Nessuna fattura importabile. ${invalidRows.length} non valide, ` +
+          `${duplicateRows.length} duplicate ignorate.` +
+          formatImportProblems(problems)
+      );
+      return;
+    }
+
+    const destination = state.session ? 'nel cloud' : 'in locale';
+
+    const confirmed = window.confirm(
+      `Anteprima importazione CSV\n\n` +
+        `File: ${file.name}\n` +
+        `Separatore rilevato: ${delimiter === '\t' ? 'tabulazione' : delimiter}\n\n` +
+        `Fatture da importare: ${validRows.length}\n` +
+        `Righe non valide: ${invalidRows.length}\n` +
+        `Duplicati ignorati: ${duplicateRows.length}\n\n` +
+        `Le ${validRows.length} fatture valide verranno salvate ${destination}. ` +
+        `Vuoi procedere?` +
+        formatImportProblems([...invalidRows, ...duplicateRows])
+    );
+
+    if (!confirmed) {
+      toast('Importazione CSV annullata.');
       return;
     }
 
     if (!state.session) {
-      let imported = 0;
-      rows.forEach((values) => {
-        const amount = parseItalianAmount(values[2]);
-        if (Number.isFinite(amount) && values[3]) {
-          state.localInvoices.push({
-            id: `${Date.now()}-${Math.random()}`,
-            customer: values[0],
-            number: values[1],
-            amount,
-            due: values[3],
-            email: values[4] || '',
-            status: ['paid', 'promised', 'disputed', 'paused'].includes(values[5]) ? values[5] : 'open',
-            paid: values[5] === 'paid' || values[5] === 'true'
-          });
-          imported += 1;
-        }
+      validRows.forEach((row) => {
+        state.localInvoices.push({
+          id: `${Date.now()}-${Math.random()}`,
+          customer: row.customerName,
+          number: row.invoiceNumber,
+          amount: row.amount,
+          due: row.dueDate,
+          email: row.email,
+          status: row.status,
+          paid: row.status === 'paid',
+          paid_at: row.status === 'paid' ? new Date().toISOString() : null,
+          issue_date: row.issueDate
+        });
       });
+
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
       render();
-      toast(`${imported} righe importate in locale.`);
+
+      toast(
+        `${validRows.length} fatture importate in locale. ` +
+          `${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
+      );
+
       return;
     }
 
-    let imported = 0;
-    for (const values of rows) {
-      const amount = parseItalianAmount(values[2]);
-      const dueDate = values[3];
-      if (!Number.isFinite(amount) || !dueDate) continue;
+    if (!state.organization) {
+      toast('Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.');
+      return;
+    }
 
-      let customer = state.customers.find((item) => item.name.trim().toLowerCase() === values[0].trim().toLowerCase());
+    const customerCache = new Map();
+
+    state.customers.forEach((customer) => {
+      customerCache.set(
+        String(customer.name || '').trim().toLowerCase(),
+        customer
+      );
+    });
+
+    let imported = 0;
+    let failed = 0;
+
+    for (const row of validRows) {
+      const customerKey = row.customerName.trim().toLowerCase();
+      let customer = customerCache.get(customerKey);
+
       if (!customer) {
-        const { data, error } = await state.supabase.from('customers').insert({
-          organization_id: state.organization.id,
-          name: values[0],
-          email: values[4] || null
-        }).select().single();
-        if (error) continue;
+        const { data, error } = await state.supabase
+          .from('customers')
+          .insert({
+            organization_id: state.organization.id,
+            name: row.customerName,
+            email: row.email || null
+          })
+          .select()
+          .single();
+
+        if (error || !data) {
+          console.error('Errore creazione cliente in import CSV:', error);
+          failed += 1;
+          continue;
+        }
+
         customer = data;
+        customerCache.set(customerKey, customer);
         state.customers.push(customer);
       }
 
-      const status = ['paid', 'promised', 'disputed', 'paused'].includes(values[5]) ? values[5] : 'open';
-      const { data, error } = await state.supabase.from('invoices').insert({
-        organization_id: state.organization.id,
-        customer_id: customer.id,
-        invoice_number: values[1] || null,
-        amount_cents: Math.round(amount * 100),
-        due_date: dueDate,
-        status,
-        paid_at: status === 'paid' ? new Date().toISOString() : null
-      }).select('*, customers(name, email)').single();
+      const { data, error } = await state.supabase
+        .from('invoices')
+        .insert({
+          organization_id: state.organization.id,
+          customer_id: customer.id,
+          invoice_number: row.invoiceNumber || null,
+          amount_cents: Math.round(row.amount * 100),
+          issue_date: row.issueDate,
+          due_date: row.dueDate,
+          status: row.status,
+          paid_at: row.status === 'paid' ? new Date().toISOString() : null
+        })
+        .select('*, customers(name, email)')
+        .single();
 
-      if (!error && data) {
-        state.invoices.push({
-          ...data,
-          customer_name: data.customers?.name || customer.name,
-          customer_email: data.customers?.email || customer.email || '',
-          source: 'cloud'
-        });
-        imported += 1;
+      if (error || !data) {
+        console.error('Errore creazione fattura in import CSV:', error);
+        failed += 1;
+        continue;
       }
+
+      state.invoices.push({
+        ...data,
+        customer_name: data.customers
+          ? data.customers.name
+          : customer.name,
+        customer_email: data.customers
+          ? data.customers.email
+          : customer.email || '',
+        source: 'cloud'
+      });
+
+      imported += 1;
     }
 
     updateCustomerOptions();
     render();
-    toast(`${imported} righe importate nel cloud.`);
-  }
 
+    toast(
+      `${imported} fatture importate nel cloud. ` +
+        `${duplicateRows.length} duplicate, ${invalidRows.length} non valide` +
+        `${failed ? ` e ${failed} non salvate` : ''}.`
+    );
+  } catch (error) {
+    console.error('Errore importazione CSV:', error);
+    toast('Impossibile leggere o importare il CSV. Verifica il formato del file.');
+  } }
 function escapeWithBreaks(value) {
   return escapeHtml(value).replace(/\n/g, '<br>');
 }
