@@ -149,6 +149,26 @@ Cordiali saluti.`
   }
 }
 
+function showImportSummary(message) {
+  const back = $('importSummaryBack');
+  const content = $('importSummaryContent');
+
+  if (!back || !content) {
+    toast(message, true);
+    return;
+  }
+
+  content.textContent = message;
+  back.style.display = 'flex';
+}
+
+function closeImportSummary() {
+  const back = $('importSummaryBack');
+  if (!back) return;
+
+  back.style.display = 'none';
+}
+  
   function setStatus(message, type = 'info') {
     const el = $('syncStatus');
     if (!el) return;
@@ -1514,9 +1534,8 @@ async function importCsv(file) {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
       render();
 
-      toast(
-  `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`,
-  true
+      showImportSummary(
+  `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
 );
 
       return;
@@ -1603,9 +1622,8 @@ async function importCsv(file) {
     updateCustomerOptions();
     render();
 
-    toast(
-  `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`,
-  true
+    showImportSummary(
+  `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`
 );
   } catch (error) {
     console.error('Errore importazione CSV:', error);
@@ -3048,4 +3066,16 @@ $('approvalContent').addEventListener('click', async (event) => {
   }
 
   start();
+$('closeImportSummaryBtn')?.addEventListener('click', closeImportSummary);
+
+$('closeImportSummaryActionBtn')?.addEventListener(
+  'click',
+  closeImportSummary
+);
+
+$('importSummaryBack')?.addEventListener('click', (event) => {
+  if (event.target === $('importSummaryBack')) {
+    closeImportSummary();
+  }
+});
 })();
