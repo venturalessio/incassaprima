@@ -1292,16 +1292,70 @@ function formatImportProblems(rows) {
   return `\n\nDettaglio:\n${preview}${suffix}`;
 }
 
-async function importCsv(file) {
+async function readImportRows(file) {
+  const fileName = String(file.name || '').toLowerCase();
+  const isCsv = fileName.endsWith('.csv');
+  const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+  if (!isCsv && !isExcel) {
+    toast('Formato non supportato. Seleziona un file CSV, XLSX oppure XLS.');
+    return null;
+  }
+
+  if (isCsv) {
+    const text = await file.text();
+    const delimiter = detectCsvDelimiter(text);
+
+    return {
+      parsedRows: parseCsvText(text, delimiter),
+      sourceLabel: 'CSV',
+      details: `Separatore rilevato: ${delimiter === '\t' ? 'tabulazione' : delimiter}`
+    };
+  }
+
+  if (typeof XLSX === 'undefined') {
+    toast('Lettore Excel non disponibile. Ricarica la pagina e riprova.');
+    return null;
+  }
+
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+
+  if (!worksheet) {
+    toast('Il file Excel non contiene fogli leggibili.');
+    return null;
+  }
+
+  const parsedRows = XLSX.utils.sheet_to_json(worksheet, {
+    header: 1,
+    defval: '',
+    raw: false,
+    dateNF: 'yyyy-mm-dd'
+  });
+
+  return {
+    parsedRows,
+    sourceLabel: 'Excel',
+    details: `Foglio importato: ${firstSheetName}`
+  };
+}
+
+async function importFile(file) {
   if (!file) return;
 
   try {
-    const text = await file.text();
-    const delimiter = detectCsvDelimiter(text);
-    const parsedRows = parseCsvText(text, delimiter);
+    const importedData = await readImportRows(file);
+
+if (!importedData) {
+  return;
+}
+
+const { parsedRows, sourceLabel, details } = importedData;
 
     if (parsedRows.length < 2) {
-      toast('Il CSV è vuoto oppure non contiene righe da importare.');
+      toast('Il file è vuoto oppure non contiene righe da importare.');
       return;
     }
 
@@ -1339,7 +1393,7 @@ async function importCsv(file) {
 
     if (!customerColumn || !amountColumn || !dueDateColumn) {
       toast(
-        'Intestazioni CSV non valide. Servono almeno: cliente, importo e scadenza.'
+        'Intestazioni non valide. Servono almeno: cliente, importo e scadenza.'
       );
       return;
     }
@@ -1492,9 +1546,9 @@ async function importCsv(file) {
     const destination = state.session ? 'nel cloud' : 'in locale';
 
     const confirmed = window.confirm(
-      `Anteprima importazione CSV\n\n` +
+      `Anteprima importazione ${sourceLabel}\n\n` +
         `File: ${file.name}\n` +
-        `Separatore rilevato: ${delimiter === '\t' ? 'tabulazione' : delimiter}\n\n` +
+        `${details}\n\n` +
         `Fatture da importare: ${validRows.length}\n` +
         `Righe non valide: ${invalidRows.length}\n` +
         `Duplicati ignorati: ${duplicateRows.length}\n\n` +
@@ -1504,7 +1558,7 @@ async function importCsv(file) {
     );
 
     if (!confirmed) {
-      toast('Importazione CSV annullata.');
+      toast('Importazione annullata.');
       return;
     }
 
@@ -1569,7 +1623,7 @@ async function importCsv(file) {
           .single();
 
         if (error || !data) {
-          console.error('Errore creazione cliente in import CSV:', error);
+          console.error('Errore creazione cliente durante importazione:', error);
           failed += 1;
           continue;
         }
@@ -1595,7 +1649,7 @@ async function importCsv(file) {
         .single();
 
       if (error || !data) {
-        console.error('Errore creazione fattura in import CSV:', error);
+        console.error('Errore creazione fattura durante importazione:', error);
         failed += 1;
         continue;
       }
@@ -1623,8 +1677,8 @@ async function importCsv(file) {
   );
 }, 0);
   } catch (error) {
-    console.error('Errore importazione CSV:', error);
-    toast('Impossibile leggere o importare il CSV. Verifica il formato del file.');
+    console.error('Errore importazione file:', error);
+    toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
   } }
 
 function duplicateGroupKey(invoice) {
@@ -3040,7 +3094,7 @@ $('approvalContent').addEventListener('click', async (event) => {
 
     $('exportBtn').addEventListener('click', exportCsv);
     $('importFile').addEventListener('change', async (event) => {
-      await importCsv(event.target.files[0]);
+      await importFile(event.target.files[0]);
       event.target.value = '';
     });
     $('resetBtn').addEventListener('click', () => {
