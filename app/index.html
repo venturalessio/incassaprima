@@ -1262,11 +1262,37 @@
 
     <div id="importSummaryContent" class="history-content"></div>
 
-    <div class="modalactions">
-      <button type="button" id="closeImportSummaryActionBtn">
-        Chiudi
-      </button>
-    </div>
+    <div class="modalactions" id="importSummaryActions">
+  <button
+    type="button"
+    id="importCustomersSkipBtn"
+    class="secondary"
+    style="display:none"
+  >
+    Ignora duplicati
+  </button>
+
+  <button
+    type="button"
+    id="importCustomersFillMissingBtn"
+    class="secondary"
+    style="display:none"
+  >
+    Completa campi mancanti
+  </button>
+
+  <button
+    type="button"
+    id="importCustomersOverwriteBtn"
+    style="display:none"
+  >
+    Aggiorna con Excel
+  </button>
+
+  <button type="button" id="closeImportSummaryActionBtn">
+    Chiudi
+  </button>
+</div>
   </div>
 </div>
   

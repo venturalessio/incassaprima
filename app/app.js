@@ -1680,6 +1680,109 @@ const { parsedRows, sourceLabel, details } = importedData;
     console.error('Errore importazione file:', error);
     toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
   } }
+
+  function customerImportUpdate(existingCustomer, row, mode) {
+  const update = {};
+
+  if (mode === 'fill-missing') {
+    if (!existingCustomer.email && row.email) {
+      update.email = row.email;
+    }
+
+    if (!existingCustomer.pec && row.pec) {
+      update.pec = row.pec;
+    }
+
+    if (!existingCustomer.phone && row.phone) {
+      update.phone = row.phone;
+    }
+  }
+
+  if (mode === 'overwrite') {
+    if (row.email) {
+      update.email = row.email;
+    }
+
+    if (row.pec) {
+      update.pec = row.pec;
+    }
+
+    if (row.phone) {
+      update.phone = row.phone;
+    }
+  }
+
+  return update;
+}
+
+function chooseCustomerImportMode(summary) {
+  return new Promise((resolve) => {
+    const back = $('importSummaryBack');
+    const title = $('importSummaryTitle');
+    const content = $('importSummaryContent');
+
+    const skipButton = $('importCustomersSkipBtn');
+    const fillMissingButton = $('importCustomersFillMissingBtn');
+    const overwriteButton = $('importCustomersOverwriteBtn');
+    const closeButton = $('closeImportSummaryActionBtn');
+    const closeIconButton = $('closeImportSummaryBtn');
+
+    title.textContent = 'Come gestire i clienti già presenti';
+
+    content.innerHTML = `
+      <p>Nel file sono stati trovati clienti già presenti nella tua anagrafica.</p>
+
+      <div class="history-entry">
+        <strong>Nuovi clienti da creare:</strong> ${summary.newCustomers}<br>
+        <strong>Clienti già presenti:</strong> ${summary.existingCustomers}<br>
+        <strong>Righe non valide:</strong> ${summary.invalidRows}<br>
+        <strong>Ripetuti nel file:</strong> ${summary.duplicateRows}
+      </div>
+
+      <p class="hint">
+        Scegli come gestire i clienti già presenti. Le celle vuote dell’Excel
+        non cancelleranno mai dati già registrati.
+      </p>
+    `;
+
+    closeButton.style.display = 'none';
+    skipButton.style.display = 'inline-flex';
+    fillMissingButton.style.display = 'inline-flex';
+    overwriteButton.style.display = 'inline-flex';
+
+    back.style.display = 'flex';
+
+    let completed = false;
+
+    const finish = (mode) => {
+      if (completed) return;
+      completed = true;
+
+      skipButton.style.display = 'none';
+      fillMissingButton.style.display = 'none';
+      overwriteButton.style.display = 'none';
+      closeButton.style.display = 'inline-flex';
+
+      back.style.display = 'none';
+
+      skipButton.onclick = null;
+      fillMissingButton.onclick = null;
+      overwriteButton.onclick = null;
+      closeButton.onclick = null;
+      closeIconButton.onclick = null;
+
+      resolve(mode);
+    };
+
+    skipButton.onclick = () => finish('skip');
+    fillMissingButton.onclick = () => finish('fill-missing');
+    overwriteButton.onclick = () => finish('overwrite');
+
+    closeButton.onclick = () => finish('skip');
+    closeIconButton.onclick = () => finish('skip');
+  });
+}
+
 async function importCustomersFile(file) {
   if (!file) return;
 
@@ -1706,7 +1809,7 @@ async function importCustomersFile(file) {
       }
     });
 
-    const nameColumn = [
+    const nameAliases = [
       'nome',
       'nomecliente',
       'cliente',
@@ -1715,81 +1818,63 @@ async function importCustomersFile(file) {
       'name',
       'customer',
       'customername'
-    ].find((key) => columns[key] !== undefined);
+    ];
 
-    const emailColumn = [
+    const emailAliases = [
       'email',
       'emailcliente',
       'customeremail',
       'mail'
-    ].find((key) => columns[key] !== undefined);
+    ];
 
-    const pecColumn = [
+    const pecAliases = [
       'pec',
       'peccliente',
       'customerpec'
-    ].find((key) => columns[key] !== undefined);
+    ];
 
-    const phoneColumn = [
+    const phoneAliases = [
       'telefono',
       'tel',
       'phone',
       'cellulare',
       'mobile'
-    ].find((key) => columns[key] !== undefined);
+    ];
+
+    const nameColumn = nameAliases.find(
+      (key) => columns[key] !== undefined
+    );
 
     if (!nameColumn) {
       toast(
-        'Intestazioni non valide. Serve almeno una colonna per il nome del cliente (es. "nome", "cliente", "ragionesociale").'
+        'Intestazioni non valide. Serve una colonna nome cliente: nome, cliente o ragione sociale.'
       );
       return;
     }
 
-    const existingKeys = new Map();
+    const existingCustomers = new Map();
+
     state.customers.forEach((customer) => {
       const key = String(customer.name || '').trim().toLowerCase();
-      existingKeys.set(key, customer);
+
+      if (key && !existingCustomers.has(key)) {
+        existingCustomers.set(key, customer);
+      }
     });
 
-    const fileKeys = new Map();
-    const validRows = [];
+    const fileKeys = new Set();
+    const newRows = [];
+    const existingRows = [];
     const invalidRows = [];
     const duplicateRows = [];
 
     parsedRows.slice(1).forEach((row, index) => {
       const line = index + 2;
 
-      const name = csvValueByAliases(row, columns, [
-        'nome',
-        'nomecliente',
-        'cliente',
-        'ragionesociale',
-        'denominazione',
-        'name',
-        'customer',
-        'customername'
-      ]);
-
-      const email = csvValueByAliases(row, columns, [
-        'email',
-        'emailcliente',
-        'customeremail',
-        'mail'
-      ]);
-
-      const pec = csvValueByAliases(row, columns, [
-        'pec',
-        'peccliente',
-        'customerpec'
-      ]);
-
-      const phone = csvValueByAliases(row, columns, [
-        'telefono',
-        'tel',
-        'phone',
-        'cellulare',
-        'mobile'
-      ]);
+      const name = csvValueByAliases(row, columns, nameAliases);
+      const email = csvValueByAliases(row, columns, emailAliases);
+      const pec = csvValueByAliases(row, columns, pecAliases);
+      const phone = csvValueByAliases(row, columns, phoneAliases);
 
       if (!name) {
         invalidRows.push({
@@ -1801,51 +1886,108 @@ async function importCustomersFile(file) {
 
       const key = name.trim().toLowerCase();
 
-      if (existingKeys.has(key) || fileKeys.has(key)) {
+      if (fileKeys.has(key)) {
         duplicateRows.push({
           line,
-          reason: `cliente duplicato (${name})`
+          reason: `cliente ripetuto nel file (${name})`
         });
         return;
       }
 
-      fileKeys.set(key, true);
+      fileKeys.add(key);
 
-      validRows.push({
+      const customerRow = {
         line,
         name,
         email: email || null,
         pec: pec || null,
         phone: phone || null
-      });
+      };
+
+      const existingCustomer = existingCustomers.get(key);
+
+      if (existingCustomer) {
+        existingRows.push({
+          ...customerRow,
+          customer: existingCustomer
+        });
+        return;
+      }
+
+      newRows.push(customerRow);
     });
 
-    if (!validRows.length) {
+    if (!newRows.length && !existingRows.length) {
       const problems = [...invalidRows, ...duplicateRows];
 
       showImportSummary(
         `Nessun cliente importabile.\n\n` +
         `${invalidRows.length} righe non valide.\n` +
-        `${duplicateRows.length} clienti duplicati ignorati.\n\n` +
+        `${duplicateRows.length} clienti ripetuti nel file ignorati.\n\n` +
         `Dettaglio:\n${formatImportProblems(problems)}`
       );
 
       return;
     }
 
-    const destination = state.session ? 'nel cloud' : 'in locale';
+    const existingMode = existingRows.length
+  ? await chooseCustomerImportMode({
+      newCustomers: newRows.length,
+      existingCustomers: existingRows.length,
+      invalidRows: invalidRows.length,
+      duplicateRows: duplicateRows.length
+    })
+  : 'skip';
 
-    const confirmed = window.confirm(
-      `Anteprima importazione ${sourceLabel}\n\n` +
-      `File: ${file.name}\n` +
-      `${details}\n\n` +
-      `Clienti da importare: ${validRows.length}\n` +
-      `Righe non valide: ${invalidRows.length}\n` +
-      `Duplicati ignorati: ${duplicateRows.length}\n\n` +
-      `I ${validRows.length} clienti validi verranno salvati ${destination}. ` +
-      `Vuoi procedere?` +
-      formatImportProblems([...invalidRows, ...duplicateRows])
+    const updateCount = existingRows.filter((row) => {
+      return Object.keys(
+        customerImportUpdate(row.customer, row, existingMode)
+      ).length > 0;
+    }).length;
+
+    const customersToUpdate = existingRows
+  .filter((row) => {
+    return Object.keys(
+      customerImportUpdate(row.customer, row, existingMode)
+    ).length > 0;
+  })
+  .map((row) => {
+    const update = customerImportUpdate(
+      row.customer,
+      row,
+      existingMode
     );
+
+    const fields = [];
+
+    if (update.email) fields.push('email');
+    if (update.pec) fields.push('PEC');
+    if (update.phone) fields.push('telefono');
+
+    return `• ${row.name}: ${fields.join(', ')}`;
+  });
+
+const updateDetails = customersToUpdate.length
+  ? `\n\nClienti da aggiornare:\n${customersToUpdate.join('\n')}`
+  : '';
+
+const confirmed = window.confirm(
+  `Conferma importazione clienti\n\n` +
+  `Nuovi clienti da creare: ${newRows.length}\n` +
+  `Clienti esistenti da aggiornare: ${updateCount}\n` +
+  `Clienti esistenti ignorati: ${existingRows.length - updateCount}\n` +
+  `Righe non valide: ${invalidRows.length}\n` +
+  `Ripetuti nel file ignorati: ${duplicateRows.length}\n\n` +
+  `Modalità clienti esistenti: ` +
+  `${existingMode === 'fill-missing'
+    ? 'completa campi mancanti'
+    : existingMode === 'overwrite'
+      ? 'aggiorna con Excel'
+      : 'ignora'}.` +
+  updateDetails +
+  `\n\nVuoi procedere?` +
+  formatImportProblems([...invalidRows, ...duplicateRows])
+);
 
     if (!confirmed) {
       toast('Importazione annullata.');
@@ -1853,28 +1995,46 @@ async function importCustomersFile(file) {
     }
 
     if (!state.session) {
-      // Import locale: aggiungiamo clienti in state.localCustomers se esiste,
-      // altrimenti usiamo state.customers come oggi.
-      validRows.forEach((row) => {
-        const customer = {
+      let created = 0;
+      let updated = 0;
+
+      newRows.forEach((row) => {
+        state.customers.push({
           id: `${Date.now()}-${Math.random()}`,
           name: row.name,
           email: row.email,
           pec: row.pec,
           phone: row.phone,
           reminders_paused: false
-        };
-        state.customers.push(customer);
+        });
+
+        created += 1;
       });
 
-      // Se usi localStorage per i clienti locali, salva qui:
-      // localStorage.setItem('localCustomers', JSON.stringify(state.customers));
+      existingRows.forEach((row) => {
+        const update = customerImportUpdate(
+          row.customer,
+          row,
+          existingMode
+        );
 
+        if (!Object.keys(update).length) {
+          return;
+        }
+
+        Object.assign(row.customer, update);
+        updated += 1;
+      });
+
+      updateCustomerOptions();
       renderCustomers();
 
       setTimeout(() => {
         showImportSummary(
-          `${validRows.length} clienti importati in locale. ${duplicateRows.length} duplicati e ${invalidRows.length} righe non valide ignorati.`
+          `${created} clienti creati in locale. ` +
+          `${updated} clienti aggiornati. ` +
+          `${existingRows.length - updated} clienti esistenti ignorati. ` +
+          `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati.`
         );
       }, 0);
 
@@ -1882,14 +2042,17 @@ async function importCustomersFile(file) {
     }
 
     if (!state.organization) {
-      toast('Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.');
+      toast(
+        'Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.'
+      );
       return;
     }
 
-    let imported = 0;
+    let created = 0;
+    let updated = 0;
     let failed = 0;
 
-    for (const row of validRows) {
+    for (const row of newRows) {
       const { data, error } = await state.supabase
         .from('customers')
         .insert({
@@ -1909,19 +2072,64 @@ async function importCustomersFile(file) {
       }
 
       state.customers.push(data);
-      imported += 1;
+      created += 1;
     }
 
+    for (const row of existingRows) {
+      const update = customerImportUpdate(
+        row.customer,
+        row,
+        existingMode
+      );
+
+      if (!Object.keys(update).length) {
+        continue;
+      }
+
+      const { data, error } = await state.supabase
+        .from('customers')
+        .update(update)
+        .eq('id', row.customer.id)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error(
+          'Errore aggiornamento cliente durante importazione:',
+          error
+        );
+        failed += 1;
+        continue;
+      }
+
+      const customerIndex = state.customers.findIndex(
+        (customer) => String(customer.id) === String(data.id)
+      );
+
+      if (customerIndex !== -1) {
+        state.customers[customerIndex] = data;
+      }
+
+      updated += 1;
+    }
+
+    updateCustomerOptions();
     renderCustomers();
 
     setTimeout(() => {
       showImportSummary(
-        `${imported} clienti importati nel cloud. ${duplicateRows.length} duplicati, ${invalidRows.length} non validi${failed ? ` e ${failed} non salvati` : ''}.`
+        `${created} clienti creati nel cloud. ` +
+        `${updated} clienti aggiornati. ` +
+        `${existingRows.length - updated} clienti esistenti ignorati. ` +
+        `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati` +
+        `${failed ? `. ${failed} operazioni non salvate` : ''}.`
       );
     }, 0);
   } catch (error) {
     console.error('Errore importazione clienti:', error);
-    toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
+    toast(
+      'Impossibile leggere o importare il file. Verifica formato e intestazioni.'
+    );
   }
 }
 
