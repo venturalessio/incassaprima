@@ -1680,6 +1680,250 @@ const { parsedRows, sourceLabel, details } = importedData;
     console.error('Errore importazione file:', error);
     toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
   } }
+async function importCustomersFile(file) {
+  if (!file) return;
+
+  try {
+    const importedData = await readImportRows(file);
+
+    if (!importedData) {
+      return;
+    }
+
+    const { parsedRows, sourceLabel, details } = importedData;
+
+    if (parsedRows.length < 2) {
+      toast('Il file è vuoto oppure non contiene righe da importare.');
+      return;
+    }
+
+    const headerRow = parsedRows[0].map(normalizeCsvHeader);
+
+    const columns = {};
+    headerRow.forEach((header, index) => {
+      if (header && columns[header] === undefined) {
+        columns[header] = index;
+      }
+    });
+
+    const nameColumn = [
+      'nome',
+      'nomecliente',
+      'cliente',
+      'ragionesociale',
+      'denominazione',
+      'name',
+      'customer',
+      'customername'
+    ].find((key) => columns[key] !== undefined);
+
+    const emailColumn = [
+      'email',
+      'emailcliente',
+      'customeremail',
+      'mail'
+    ].find((key) => columns[key] !== undefined);
+
+    const pecColumn = [
+      'pec',
+      'peccliente',
+      'customerpec'
+    ].find((key) => columns[key] !== undefined);
+
+    const phoneColumn = [
+      'telefono',
+      'tel',
+      'phone',
+      'cellulare',
+      'mobile'
+    ].find((key) => columns[key] !== undefined);
+
+    if (!nameColumn) {
+      toast(
+        'Intestazioni non valide. Serve almeno una colonna per il nome del cliente (es. "nome", "cliente", "ragionesociale").'
+      );
+      return;
+    }
+
+    const existingKeys = new Map();
+    state.customers.forEach((customer) => {
+      const key = String(customer.name || '').trim().toLowerCase();
+      existingKeys.set(key, customer);
+    });
+
+    const fileKeys = new Map();
+    const validRows = [];
+    const invalidRows = [];
+    const duplicateRows = [];
+
+    parsedRows.slice(1).forEach((row, index) => {
+      const line = index + 2;
+
+      const name = csvValueByAliases(row, columns, [
+        'nome',
+        'nomecliente',
+        'cliente',
+        'ragionesociale',
+        'denominazione',
+        'name',
+        'customer',
+        'customername'
+      ]);
+
+      const email = csvValueByAliases(row, columns, [
+        'email',
+        'emailcliente',
+        'customeremail',
+        'mail'
+      ]);
+
+      const pec = csvValueByAliases(row, columns, [
+        'pec',
+        'peccliente',
+        'customerpec'
+      ]);
+
+      const phone = csvValueByAliases(row, columns, [
+        'telefono',
+        'tel',
+        'phone',
+        'cellulare',
+        'mobile'
+      ]);
+
+      if (!name) {
+        invalidRows.push({
+          line,
+          reason: 'nome cliente mancante'
+        });
+        return;
+      }
+
+      const key = name.trim().toLowerCase();
+
+      if (existingKeys.has(key) || fileKeys.has(key)) {
+        duplicateRows.push({
+          line,
+          reason: `cliente duplicato (${name})`
+        });
+        return;
+      }
+
+      fileKeys.set(key, true);
+
+      validRows.push({
+        line,
+        name,
+        email: email || null,
+        pec: pec || null,
+        phone: phone || null
+      });
+    });
+
+    if (!validRows.length) {
+      const problems = [...invalidRows, ...duplicateRows];
+
+      showImportSummary(
+        `Nessun cliente importabile.\n\n` +
+        `${invalidRows.length} righe non valide.\n` +
+        `${duplicateRows.length} clienti duplicati ignorati.\n\n` +
+        `Dettaglio:\n${formatImportProblems(problems)}`
+      );
+
+      return;
+    }
+
+    const destination = state.session ? 'nel cloud' : 'in locale';
+
+    const confirmed = window.confirm(
+      `Anteprima importazione ${sourceLabel}\n\n` +
+      `File: ${file.name}\n` +
+      `${details}\n\n` +
+      `Clienti da importare: ${validRows.length}\n` +
+      `Righe non valide: ${invalidRows.length}\n` +
+      `Duplicati ignorati: ${duplicateRows.length}\n\n` +
+      `I ${validRows.length} clienti validi verranno salvati ${destination}. ` +
+      `Vuoi procedere?` +
+      formatImportProblems([...invalidRows, ...duplicateRows])
+    );
+
+    if (!confirmed) {
+      toast('Importazione annullata.');
+      return;
+    }
+
+    if (!state.session) {
+      // Import locale: aggiungiamo clienti in state.localCustomers se esiste,
+      // altrimenti usiamo state.customers come oggi.
+      validRows.forEach((row) => {
+        const customer = {
+          id: `${Date.now()}-${Math.random()}`,
+          name: row.name,
+          email: row.email,
+          pec: row.pec,
+          phone: row.phone,
+          reminders_paused: false
+        };
+        state.customers.push(customer);
+      });
+
+      // Se usi localStorage per i clienti locali, salva qui:
+      // localStorage.setItem('localCustomers', JSON.stringify(state.customers));
+
+      renderCustomers();
+
+      setTimeout(() => {
+        showImportSummary(
+          `${validRows.length} clienti importati in locale. ${duplicateRows.length} duplicati e ${invalidRows.length} righe non valide ignorati.`
+        );
+      }, 0);
+
+      return;
+    }
+
+    if (!state.organization) {
+      toast('Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.');
+      return;
+    }
+
+    let imported = 0;
+    let failed = 0;
+
+    for (const row of validRows) {
+      const { data, error } = await state.supabase
+        .from('customers')
+        .insert({
+          organization_id: state.organization.id,
+          name: row.name,
+          email: row.email,
+          pec: row.pec,
+          phone: row.phone
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Errore creazione cliente durante importazione:', error);
+        failed += 1;
+        continue;
+      }
+
+      state.customers.push(data);
+      imported += 1;
+    }
+
+    renderCustomers();
+
+    setTimeout(() => {
+      showImportSummary(
+        `${imported} clienti importati nel cloud. ${duplicateRows.length} duplicati, ${invalidRows.length} non validi${failed ? ` e ${failed} non salvati` : ''}.`
+      );
+    }, 0);
+  } catch (error) {
+    console.error('Errore importazione clienti:', error);
+    toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
+  }
+}
 
 function duplicateGroupKey(invoice) {
   const customerName = String(
@@ -2940,6 +3184,20 @@ $('customersBack').addEventListener('click', (event) => {
 });
 $('customerSearch').addEventListener('input', renderCustomers);
 $('newCustomerBtn').addEventListener('click', () => openCustomerEditor(null));
+$('importCustomersBtn').addEventListener('click', () => {
+  if (!state.session) {
+    toast('Accedi al cloud per importare clienti.');
+    return;
+  }
+  $('importCustomersFile').click();
+});
+
+$('importCustomersFile').addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  await importCustomersFile(file);
+  event.target.value = '';
+});
 $('customersContent').addEventListener('click', (event) => {
   const button = event.target.closest('button[data-customer-op]');
   if (!button) return;

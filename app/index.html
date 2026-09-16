@@ -985,9 +985,14 @@
   </button>
 </div>
     <div class="customer-toolbar">
-      <input id="customerSearch" placeholder="Cerca cliente, email o PEC">
-      <button type="button" id="newCustomerBtn" class="secondary">Nuovo cliente</button>
-    </div>
+  <input id="customerSearch" placeholder="Cerca cliente, email o PEC">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" id="newCustomerBtn" class="secondary">Nuovo cliente</button>
+    <button type="button" id="importCustomersBtn" class="secondary">Importa clienti</button>
+  </div>
+</div>
+
+<input id="importCustomersFile" type="file" accept=".csv,.xlsx,.xls" style="display:none">
 
     <div id="customersContent"></div>
   </div>
