@@ -785,7 +785,7 @@
       <button type="button" class="secondary" id="authBtn">Accedi / Registrati</button>
       <button type="button" class="secondary" id="signOutBtn">Esci dal cloud</button>
       <button type="button" class="secondary" id="exportBtn">Esporta CSV</button>
-      <label class="filelabel secondary">Importa CSV<input id="importFile" type="file" accept=".csv"></label>
+      <label class="filelabel secondary">Importa file<input id="importFile" type="file" accept=".csv,.xlsx,.xls"></label>
       <button type="button" class="secondary" id="duplicateCheckBtn">Rileva duplicati</button>
       <button type="button" class="danger" id="resetBtn">Azzera dati locali</button>
     </div>
@@ -1268,6 +1268,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="app.js"></script>
 <script>
   (function () {
