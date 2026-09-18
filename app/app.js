@@ -2500,6 +2500,14 @@ function openCustomers() {
   renderCustomers();
 }
 
+function openGuide() {
+  $('guideBack').style.display = 'flex';
+}
+
+function closeGuide() {
+  $('guideBack').style.display = 'none';
+}
+
 function closeCustomers() {
   $('customersBack').style.display = 'none';
 }
@@ -3378,7 +3386,13 @@ async function saveRules() {
     $('customersBtn').addEventListener('click', openCustomers);
     $('analyticsBtn').addEventListener('click', openAnalytics);
     $('rulesBtn').addEventListener('click', openRules);
+    $('guideBtn').addEventListener('click', openGuide);
 $('closeRulesBtn').addEventListener('click', closeRules);
+$('closeGuideBtn').addEventListener('click', closeGuide);
+$('closeGuideActionBtn').addEventListener('click', closeGuide);
+$('guideBack').addEventListener('click', (event) => {
+  if (event.target === $('guideBack')) closeGuide();
+});
 $('cancelRulesBtn').addEventListener('click', closeRules);
 $('saveRulesBtn').addEventListener('click', saveRules);
 $('rulesBack').addEventListener('click', (event) => {

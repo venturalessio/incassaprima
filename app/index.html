@@ -778,17 +778,18 @@
       <span id="syncStatus" class="sync-status">Caricamento…</span>
     </div>
     <div class="actions">
-      <button type="button" class="secondary" id="rulesBtn">Regole</button>
-      <button type="button" class="secondary" id="approvalBtn">Da approvare<span id="approvalCount">0</span></button>
-      <button type="button" class="secondary" id="customersBtn">Clienti</button>
-      <button type="button" class="secondary" id="analyticsBtn">Analisi incassi</button>
-      <button type="button" class="secondary" id="authBtn">Accedi / Registrati</button>
-      <button type="button" class="secondary" id="signOutBtn">Esci dal cloud</button>
-      <button type="button" class="secondary" id="exportBtn">Esporta CSV</button>
-      <label class="filelabel secondary">Importa file<input id="importFile" type="file" accept=".csv,.xlsx,.xls"></label>
-      <button type="button" class="secondary" id="duplicateCheckBtn">Rileva duplicati</button>
-      <button type="button" class="danger" id="resetBtn">Azzera dati locali</button>
-    </div>
+  <button type="button" class="secondary" id="rulesBtn">Regole</button>
+  <button type="button" class="secondary" id="guideBtn">Guida</button>
+  <button type="button" class="secondary" id="approvalBtn">Da approvare<span id="approvalCount">0</span></button>
+  <button type="button" class="secondary" id="customersBtn">Clienti</button>
+  <button type="button" class="secondary" id="analyticsBtn">Analisi incassi</button>
+  <button type="button" class="secondary" id="authBtn">Accedi / Registrati</button>
+  <button type="button" class="secondary" id="signOutBtn">Esci dal cloud</button>
+  <button type="button" class="secondary" id="exportBtn">Esporta CSV</button>
+  <label class="filelabel secondary">Importa file<input id="importFile" type="file" accept=".csv,.xlsx,.xls"></label>
+  <button type="button" class="secondary" id="duplicateCheckBtn">Rileva duplicati</button>
+  <button type="button" class="danger" id="resetBtn">Azzera dati locali</button>
+</div>
   </div>
 
   <section class="stats">
@@ -938,6 +939,128 @@
     </div>
   </div>
 </div>
+
+<div id="guideBack" class="modalback">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="guideTitle"
+  >
+    <div class="modalhead">
+      <div>
+        <h2 id="guideTitle">Guida all'uso</h2>
+        <p class="hint">
+          Come usare IncassaPrima per gestire clienti, fatture e solleciti.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="closeGuideBtn"
+        class="close"
+        aria-label="Chiudi guida"
+      >×</button>
+    </div>
+
+    <div class="guide-content" style="max-height:60vh;overflow-y:auto;padding:0 16px">
+      <section class="guide-section">
+        <h3>Primi passi</h3>
+        <p>
+          IncassaPrima ti aiuta a tenere traccia delle fatture emesse e a gestire i solleciti di pagamento.
+          Per iniziare:
+        </p>
+        <ul>
+          <li>crea o importa i tuoi clienti nella sezione <strong>Clienti</strong>;</li>
+          <li>aggiungi le fatture manualmente oppure importale da Excel/CSV;</li>
+          <li>consulta la lista delle scadenze e usa i filtri per trovare rapidamente le fatture.</li>
+        </ul>
+      </section>
+
+      <section class="guide-section">
+        <h3>Clienti</h3>
+        <p>
+          Nella sezione <strong>Clienti</strong> puoi:
+        </p>
+        <ul>
+          <li>creare manualmente un cliente con nome, email, PEC e telefono;</li>
+          <li>importare molti clienti da un file Excel/CSV con il pulsante <strong>Importa clienti</strong>;</li>
+          <li>aggiornare email, PEC e telefono scegliendo se completare solo i campi mancanti oppure sovrascrivere con i dati del file.</li>
+        </ul>
+        <p class="hint">
+          Le celle vuote dell'Excel non cancellano mai dati già registrati.
+        </p>
+      </section>
+
+      <section class="guide-section">
+        <h3>Fatture e scadenze</h3>
+        <p>
+          Per inserire una fattura:
+        </p>
+        <ul>
+          <li>clicca su <strong>Nuova fattura</strong> e compila cliente, numero, importi e date;</li>
+          <li>oppure usa <strong>Importa file</strong> per caricare molte fatture da Excel/CSV.</li>
+        </ul>
+        <p>
+          Nella lista principale vedi per ogni fattura:
+        </p>
+        <ul>
+          <li>cliente e numero;</li>
+          <li>importo e data di scadenza;</li>
+          <li>stato (aperta, pagata, ecc.).</li>
+        </ul>
+        <p>
+          Usa i filtri e la ricerca per trovare rapidamente le fatture che ti interessano.
+        </p>
+      </section>
+
+      <section class="guide-section">
+        <h3>Solleciti</h3>
+        <p>
+          IncassaPrima prepara bozze di sollecito in base alle regole che imposti in <strong>Regole</strong>.
+        </p>
+        <ul>
+          <li>le bozze vanno nella coda <strong>Da approvare</strong>;</li>
+          <li>puoi leggere, modificare e approvare ogni sollecito prima dell'invio;</li>
+          <li>puoi sospendere i solleciti automatici per singoli clienti dalla scheda cliente.</li>
+        </ul>
+        <p class="hint">
+          In questa fase alpha, l'invio automatico delle email è disattivato: ogni sollecito viene sempre revisionato da una persona.
+        </p>
+      </section>
+
+      <section class="guide-section">
+        <h3>Piani: Free, Pro e Studio</h3>
+        <p>
+          IncassaPrima è disponibile in tre piani:
+        </p>
+        <ul>
+          <li><strong>Free:</strong> uso base gratuito, con fatture, clienti, solleciti e import/export.</li>
+          <li><strong>Pro:</strong> funzioni avanzate per la gestione degli incassi e analisi più dettagliate.</li>
+          <li><strong>Studio:</strong> funzioni dedicate a commercialisti e studi, con gestione di più clienti associati.</li>
+        </ul>
+        <p class="hint">
+          I dettagli completi delle funzionalità per piano saranno visibili direttamente nell'app non appena disponibili.
+        </p>
+      </section>
+
+      <section class="guide-section">
+        <h3>Dati e privacy</h3>
+        <p>
+          I dati delle fatture e dei clienti sono salvati nel cloud su Supabase, associati alla tua organizzazione.
+          Puoi esportarli in CSV in qualsiasi momento dalla barra principale.
+        </p>
+      </section>
+    </div>
+
+    <div class="modalactions">
+      <button type="button" id="closeGuideActionBtn">
+        Chiudi
+      </button>
+    </div>
+  </div>
+</div>
+
   <div id="approvalBack" class="modalback">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
     <div class="modalhead">
