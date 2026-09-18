@@ -24,14 +24,16 @@
     scheduledReminders: [],
     activeScheduledReminder: null,
     reminderSettings: {
-  first_reminder_after_days: 3,
-  second_reminder_after_days: 15,
-  approval_required: true,
-  automatic_email_enabled: false
-},
+      first_reminder_after_days: 3,
+      second_reminder_after_days: 15,
+      approval_required: true,
+      automatic_email_enabled: false
+    },
 
     localInvoices: []
   };
+
+  console.log('App initialized');
 
   const models = {
     courtesy: {
@@ -75,6 +77,13 @@ Cordiali saluti.`
     return SUPABASE_URL.startsWith('https://') &&
       SUPABASE_URL.includes('.supabase.co') &&
       SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+  }
+
+  function getOrganizationPlan() {
+    if (!state.organization || !state.organization.plan) {
+      return 'free';
+    }
+    return state.organization.plan;
   }
 
   function today() {
@@ -132,34 +141,34 @@ Cordiali saluti.`
   }
 
   function toast(message, persistent = false) {
-  const el = $('toast');
-  if (!el) return;
+    const el = $('toast');
+    if (!el) return;
 
-  clearTimeout(window.__incassaToast);
-  window.__incassaToast = null;
+    clearTimeout(window.__incassaToast);
+    window.__incassaToast = null;
 
-  el.textContent = message;
-  el.style.display = 'block';
+    el.textContent = message;
+    el.style.display = 'block';
 
-  if (!persistent) {
-    window.__incassaToast = setTimeout(() => {
-      el.style.display = 'none';
-      window.__incassaToast = null;
-    }, 2800);
+    if (!persistent) {
+      window.__incassaToast = setTimeout(() => {
+        el.style.display = 'none';
+        window.__incassaToast = null;
+      }, 2800);
+    }
   }
-}
 
-function showImportSummary(message) {
-  window.alert(`Importazione CSV completata\n\n${message}`);
-}
+  function showImportSummary(message) {
+    window.alert(`Importazione CSV completata\n\n${message}`);
+  }
 
-function closeImportSummary() {
-  const back = $('importSummaryBack');
-  if (!back) return;
+  function closeImportSummary() {
+    const back = $('importSummaryBack');
+    if (!back) return;
 
-  back.style.display = 'none';
-}
-  
+    back.style.display = 'none';
+  }
+
   function setStatus(message, type = 'info') {
     const el = $('syncStatus');
     if (!el) return;
@@ -168,28 +177,28 @@ function closeImportSummary() {
   }
 
   function parseDateOnly(value) {
-  const [year, month, day] = String(value || '')
-    .slice(0, 10)
-    .split('-')
-    .map(Number);
+    const [year, month, day] = String(value || '')
+      .slice(0, 10)
+      .split('-')
+      .map(Number);
 
-  if (!year || !month || !day) {
-    return null;
+    if (!year || !month || !day) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day);
   }
 
-  return new Date(year, month - 1, day);
-}
+  function diffDays(invoice) {
+    const due = parseDateOnly(invoice.due_date || invoice.due);
+    const currentDay = parseDateOnly(today());
 
-function diffDays(invoice) {
-  const due = parseDateOnly(invoice.due_date || invoice.due);
-  const currentDay = parseDateOnly(today());
+    if (!due || !currentDay) {
+      return 0;
+    }
 
-  if (!due || !currentDay) {
-    return 0;
+    return Math.floor((currentDay - due) / 86400000);
   }
-
-  return Math.floor((currentDay - due) / 86400000);
-}
 
   function invoiceStatus(invoice) {
     const rawStatus = invoice.status || (invoice.paid ? 'paid' : 'open');
@@ -214,42 +223,42 @@ function diffDays(invoice) {
       upcoming: 'Da incassare'
     }[status] || status;
   }
-function getCustomerForInvoice(invoice) {
-  if (!invoice || !invoice.customer_id) return null;
+  function getCustomerForInvoice(invoice) {
+    if (!invoice || !invoice.customer_id) return null;
 
-  return state.customers.find(
-    (customer) => customer.id === invoice.customer_id
-  ) || null;
-}
-
-function isEligibleForAutomaticReminder(invoice) {
-  const customer = getCustomerForInvoice(invoice);
-  const status = invoice.status || 'open';
-  const todayIso = today();
-
-  if (!invoice || invoice.source !== 'cloud') return false;
-  if (!customer || customer.reminders_paused) return false;
-  if (['paid', 'disputed', 'paused'].includes(status)) return false;
-
-  if (
-    status === 'promised' &&
-    invoice.promised_payment_date &&
-    invoice.promised_payment_date >= todayIso
-  ) {
-    return false;
+    return state.customers.find(
+      (customer) => customer.id === invoice.customer_id
+    ) || null;
   }
 
-  return (
-    status === 'open' ||
-    (
+  function isEligibleForAutomaticReminder(invoice) {
+    const customer = getCustomerForInvoice(invoice);
+    const status = invoice.status || 'open';
+    const todayIso = today();
+
+    if (!invoice || invoice.source !== 'cloud') return false;
+    if (!customer || customer.reminders_paused) return false;
+    if (['paid', 'disputed', 'paused'].includes(status)) return false;
+
+    if (
       status === 'promised' &&
+      invoice.promised_payment_date &&
+      invoice.promised_payment_date >= todayIso
+    ) {
+      return false;
+    }
+
+    return (
+      status === 'open' ||
       (
-        !invoice.promised_payment_date ||
-        invoice.promised_payment_date < todayIso
+        status === 'promised' &&
+        (
+          !invoice.promised_payment_date ||
+          invoice.promised_payment_date < todayIso
+        )
       )
-    )
-  );
-}
+    );
+  }
   function recommendedModel(invoice) {
     const days = diffDays(invoice);
     if (days <= 2) return 'courtesy';
@@ -305,20 +314,37 @@ function isEligibleForAutomaticReminder(invoice) {
       source: 'local'
     };
   }
-function updateAccountUi() {
-  const authButton = $('authBtn');
-  const signOutButton = $('signOutBtn');
+  function updateAccountUi() {
+    const authButton = $('authBtn');
+    const signOutButton = $('signOutBtn');
 
-  if (!authButton || !signOutButton) return;
+    if (!authButton || !signOutButton) return;
 
-  if (state.session) {
-    authButton.style.display = 'none';
-    signOutButton.style.display = 'inline-block';
-  } else {
-    authButton.style.display = 'inline-block';
-    signOutButton.style.display = 'none';
+    if (state.session) {
+      authButton.style.display = 'none';
+      signOutButton.style.display = 'inline-block';
+    } else {
+      authButton.style.display = 'inline-block';
+      signOutButton.style.display = 'none';
+    }
+
+    // Gestione visibilità funzionalità per piano
+    updateFeaturesByPlan();
+  }
+
+  function updateFeaturesByPlan() {
+  const plan = getOrganizationPlan();
+  console.log('updateFeaturesByPlan chiamata, plan:', plan);
+
+  // Dashboard Studio: visibile solo per piano 'studio'
+  const studioBtn = $('studioBtn');
+  console.log('studioBtn:', studioBtn);
+  if (studioBtn) {
+    studioBtn.style.display = (plan === 'studio') ? 'inline-block' : 'none';
+    console.log('studioBtn.display impostato a:', studioBtn.style.display);
   }
 }
+
   async function initializeSupabase() {
     if (!configured()) {
       setStatus('Modalità locale: configura Supabase per attivare Pro.', 'warning');
@@ -350,25 +376,25 @@ function updateAccountUi() {
 
 
   async function loadReminderSettings() {
-  if (!state.session || !state.organization) {
-    return;
-  }
+    if (!state.session || !state.organization) {
+      return;
+    }
 
-  const { data, error } = await state.supabase
-    .from('organization_reminder_settings')
-    .select('*')
-    .eq('organization_id', state.organization.id)
-    .maybeSingle();
+    const { data, error } = await state.supabase
+      .from('organization_reminder_settings')
+      .select('*')
+      .eq('organization_id', state.organization.id)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Errore caricamento regole:', error.message);
-    return;
-  }
+    if (error) {
+      console.error('Errore caricamento regole:', error.message);
+      return;
+    }
 
-  if (data) {
-    state.reminderSettings = data;
+    if (data) {
+      state.reminderSettings = data;
+    }
   }
-}
   async function loadCloudData() {
     if (!state.supabase || !state.session) return;
 
@@ -389,6 +415,7 @@ function updateAccountUi() {
     }
 
     state.organization = memberships[0].organizations;
+    updateAccountUi();
     const organizationId = memberships[0].organization_id;
     await loadReminderSettings();
 
@@ -418,14 +445,14 @@ function updateAccountUi() {
     state.invoices = (invoices || []).map((invoice) => ({
       ...invoice,
       customer_name: invoice.customers ? invoice.customers.name : 'Cliente',
-      customer_email: invoice.customers ? invoice.customers.email : '' ,
+      customer_email: invoice.customers ? invoice.customers.email : '',
       source: 'cloud'
     }));
 
     updateCustomerOptions();
-render();
-await loadScheduledReminders();
-await generateScheduledReminders();
+    render();
+    await loadScheduledReminders();
+    await generateScheduledReminders();
   }
 
   function updateCustomerOptions() {
@@ -497,21 +524,21 @@ await generateScheduledReminders();
         </tr></thead>
         <tbody>
           ${list.map((invoice) => {
-            const status = invoiceStatus(invoice);
-            const amount = invoice.amount_cents !== undefined ? moneyFromCents(invoice.amount_cents) : money(invoice.amount);
-            const customer = invoice.customer_name || invoice.customer || 'Cliente';
-            const number = invoice.invoice_number || invoice.number || 'Senza numero';
-            const email = invoice.customer_email || invoice.email || '';
-            const customerRecord = getCustomerForInvoice(invoice);
+      const status = invoiceStatus(invoice);
+      const amount = invoice.amount_cents !== undefined ? moneyFromCents(invoice.amount_cents) : money(invoice.amount);
+      const customer = invoice.customer_name || invoice.customer || 'Cliente';
+      const number = invoice.invoice_number || invoice.number || 'Senza numero';
+      const email = invoice.customer_email || invoice.email || '';
+      const customerRecord = getCustomerForInvoice(invoice);
 
-const autoPaused = Boolean(
-  customerRecord && customerRecord.reminders_paused
-);
+      const autoPaused = Boolean(
+        customerRecord && customerRecord.reminders_paused
+      );
 
-const autoPausedNote = autoPaused
-  ? '<br><small style="color:#b45309;font-weight:700">⚠ Auto-solleciti sospesi per cliente</small>'
-  : '';
-            return `
+      const autoPausedNote = autoPaused
+        ? '<br><small style="color:#b45309;font-weight:700">⚠ Auto-solleciti sospesi per cliente</small>'
+        : '';
+      return `
               <tr>
                 <td><strong>${escapeHtml(customer)}</strong><br><small>${escapeHtml(number)}${email ? ` · ${escapeHtml(email)}` : ''}</small>${autoPausedNote}</td>
                 <td>${dateIt(invoice.due_date || invoice.due)}</td>
@@ -524,7 +551,7 @@ const autoPausedNote = autoPaused
                   <button type="button" class="small danger" data-op="delete" data-id="${invoice.id}">Elimina</button>
                 </div></td>
               </tr>`;
-          }).join('')}
+    }).join('')}
         </tbody>
       </table>`;
     renderPriorityDashboard();
@@ -643,178 +670,177 @@ const autoPausedNote = autoPaused
   }
 
   function openStatusModal(invoice) {
-  state.statusInvoice = invoice;
+    state.statusInvoice = invoice;
 
-  const current = invoice.status &&
-    ['open', 'paid', 'promised', 'disputed', 'paused'].includes(invoice.status)
-    ? invoice.status
-    : 'open';
+    const current = invoice.status &&
+      ['open', 'paid', 'promised', 'disputed', 'paused'].includes(invoice.status)
+      ? invoice.status
+      : 'open';
 
-  $('statusTitle').textContent = 'Aggiorna stato fattura';
+    $('statusTitle').textContent = 'Aggiorna stato fattura';
 
-  $('statusSubtitle').textContent =
-    `Fattura ${invoice.invoice_number || invoice.number || 'senza numero'} · ${
-      invoice.amount_cents !== undefined
+    $('statusSubtitle').textContent =
+      `Fattura ${invoice.invoice_number || invoice.number || 'senza numero'} · ${invoice.amount_cents !== undefined
         ? moneyFromCents(invoice.amount_cents)
         : money(invoice.amount)
-    }`;
+      }`;
 
-  const selected = document.querySelector(
-    `input[name="invoiceStatus"][value="${current}"]`
-  );
-
-  if (selected) selected.checked = true;
-
-  $('promiseDate').value = invoice.promised_payment_date || '';
-  $('promiseField').classList.toggle('visible', current === 'promised');
-  $('statusBack').style.display = 'flex';
-}
-
-function closeStatusModal() {
-  state.statusInvoice = null;
-  $('statusBack').style.display = 'none';
-}
-
-function selectedInvoiceStatus() {
-  const selected = document.querySelector(
-    'input[name="invoiceStatus"]:checked'
-  );
-
-  return selected ? selected.value : null;
-}
-
-async function saveInvoiceStatus() {
-  const invoice = state.statusInvoice;
-  const status = selectedInvoiceStatus();
-
-  if (!invoice || !status) {
-    toast('Seleziona uno stato per la fattura.');
-    return;
-  }
-
-  const promiseDate = $('promiseDate').value || null;
-
-  if (status === 'promised' && !promiseDate) {
-    toast('Inserisci la data promessa di pagamento.');
-    $('promiseDate').focus();
-    return;
-  }
-
-  if (!state.session) {
-    const local = state.localInvoices.find(
-      (item) => String(item.id) === String(invoice.id)
+    const selected = document.querySelector(
+      `input[name="invoiceStatus"][value="${current}"]`
     );
 
-    if (!local) {
+    if (selected) selected.checked = true;
+
+    $('promiseDate').value = invoice.promised_payment_date || '';
+    $('promiseField').classList.toggle('visible', current === 'promised');
+    $('statusBack').style.display = 'flex';
+  }
+
+  function closeStatusModal() {
+    state.statusInvoice = null;
+    $('statusBack').style.display = 'none';
+  }
+
+  function selectedInvoiceStatus() {
+    const selected = document.querySelector(
+      'input[name="invoiceStatus"]:checked'
+    );
+
+    return selected ? selected.value : null;
+  }
+
+  async function saveInvoiceStatus() {
+    const invoice = state.statusInvoice;
+    const status = selectedInvoiceStatus();
+
+    if (!invoice || !status) {
+      toast('Seleziona uno stato per la fattura.');
       return;
     }
 
-    local.status = status;
-    local.paid = status === 'paid';
-    local.promised_payment_date =
-      status === 'promised' ? promiseDate : null;
-    local.paid_at =
-      status === 'paid' ? new Date().toISOString() : null;
+    const promiseDate = $('promiseDate').value || null;
 
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
-    closeStatusModal();
-    render();
-    toast('Stato aggiornato in locale.');
-    return;
-  }
-
-  const previousStatus = invoice.status || 'open';
-
-  const update = {
-    status,
-    paid_at: status === 'paid' ? new Date().toISOString() : null,
-    promised_payment_date:
-      status === 'promised' ? promiseDate : null
-  };
-
-  const { error } = await state.supabase
-    .from('invoices')
-    .update(update)
-    .eq('id', invoice.id);
-
-  if (error) {
-    toast(`Errore aggiornamento stato: ${error.message}`);
-    return;
-  }
-
-  await logInvoiceActivity(
-    invoice.id,
-    'invoice_status_changed',
-    `Stato fattura aggiornato da "${statusLabel(previousStatus)}" a "${statusLabel(status)}".`,
-    {
-      previous_status: previousStatus,
-      new_status: status,
-      promised_payment_date: status === 'promised' ? promiseDate : null
+    if (status === 'promised' && !promiseDate) {
+      toast('Inserisci la data promessa di pagamento.');
+      $('promiseDate').focus();
+      return;
     }
-  );
 
-  if (status === 'promised') {
+    if (!state.session) {
+      const local = state.localInvoices.find(
+        (item) => String(item.id) === String(invoice.id)
+      );
+
+      if (!local) {
+        return;
+      }
+
+      local.status = status;
+      local.paid = status === 'paid';
+      local.promised_payment_date =
+        status === 'promised' ? promiseDate : null;
+      local.paid_at =
+        status === 'paid' ? new Date().toISOString() : null;
+
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
+      closeStatusModal();
+      render();
+      toast('Stato aggiornato in locale.');
+      return;
+    }
+
+    const previousStatus = invoice.status || 'open';
+
+    const update = {
+      status,
+      paid_at: status === 'paid' ? new Date().toISOString() : null,
+      promised_payment_date:
+        status === 'promised' ? promiseDate : null
+    };
+
+    const { error } = await state.supabase
+      .from('invoices')
+      .update(update)
+      .eq('id', invoice.id);
+
+    if (error) {
+      toast(`Errore aggiornamento stato: ${error.message}`);
+      return;
+    }
+
     await logInvoiceActivity(
       invoice.id,
-      'payment_promise_created',
-      `Promessa di pagamento registrata per il ${dateIt(promiseDate)}.`,
+      'invoice_status_changed',
+      `Stato fattura aggiornato da "${statusLabel(previousStatus)}" a "${statusLabel(status)}".`,
       {
-        promised_payment_date: promiseDate
+        previous_status: previousStatus,
+        new_status: status,
+        promised_payment_date: status === 'promised' ? promiseDate : null
       }
     );
-  }
 
-  const promiseIsFuture =
-    status === 'promised' &&
-    promiseDate >= today();
-
-  const mustCancelScheduledReminders =
-    status === 'paid' ||
-    status === 'disputed' ||
-    status === 'paused' ||
-    promiseIsFuture;
-
-  if (mustCancelScheduledReminders) {
-    const { data: cancelledReminders, error: cancelError } =
-      await state.supabase
-        .from('reminders')
-        .update({ status: 'cancelled' })
-        .eq('invoice_id', invoice.id)
-        .eq('status', 'scheduled')
-        .select('id, template_key');
-
-    if (cancelError) {
-      console.error(
-        'Errore annullamento bozze fattura:',
-        cancelError.message
-      );
-    } else if (cancelledReminders && cancelledReminders.length) {
-      await Promise.all(
-        cancelledReminders.map((reminder) =>
-          logInvoiceActivity(
-            invoice.id,
-            'reminder_cancelled',
-            `Bozza ${scheduledReminderLabel(reminder.template_key)} annullata: fattura ${statusLabel(status).toLowerCase()}.`,
-            {
-              reminder_id: reminder.id,
-              reminder_template_key: reminder.template_key,
-              cancellation_reason: status
-            }
-          )
-        )
+    if (status === 'promised') {
+      await logInvoiceActivity(
+        invoice.id,
+        'payment_promise_created',
+        `Promessa di pagamento registrata per il ${dateIt(promiseDate)}.`,
+        {
+          promised_payment_date: promiseDate
+        }
       );
     }
+
+    const promiseIsFuture =
+      status === 'promised' &&
+      promiseDate >= today();
+
+    const mustCancelScheduledReminders =
+      status === 'paid' ||
+      status === 'disputed' ||
+      status === 'paused' ||
+      promiseIsFuture;
+
+    if (mustCancelScheduledReminders) {
+      const { data: cancelledReminders, error: cancelError } =
+        await state.supabase
+          .from('reminders')
+          .update({ status: 'cancelled' })
+          .eq('invoice_id', invoice.id)
+          .eq('status', 'scheduled')
+          .select('id, template_key');
+
+      if (cancelError) {
+        console.error(
+          'Errore annullamento bozze fattura:',
+          cancelError.message
+        );
+      } else if (cancelledReminders && cancelledReminders.length) {
+        await Promise.all(
+          cancelledReminders.map((reminder) =>
+            logInvoiceActivity(
+              invoice.id,
+              'reminder_cancelled',
+              `Bozza ${scheduledReminderLabel(reminder.template_key)} annullata: fattura ${statusLabel(status).toLowerCase()}.`,
+              {
+                reminder_id: reminder.id,
+                reminder_template_key: reminder.template_key,
+                cancellation_reason: status
+              }
+            )
+          )
+        );
+      }
+    }
+
+    closeStatusModal();
+    await loadCloudData();
+
+    toast(
+      mustCancelScheduledReminders
+        ? 'Stato aggiornato e bozze attive annullate.'
+        : 'Stato fattura aggiornato.'
+    );
   }
-
-  closeStatusModal();
-  await loadCloudData();
-
-  toast(
-    mustCancelScheduledReminders
-      ? 'Stato aggiornato e bozze attive annullate.'
-      : 'Stato fattura aggiornato.'
-  );
-}
 
   async function deleteInvoice(invoice) {
     if (!window.confirm('Eliminare definitivamente questa scadenza?')) return;
@@ -849,28 +875,28 @@ async function saveInvoiceStatus() {
     $('modalSubtitle').textContent = `Fattura ${number} · ${amount} · scadenza ${dateIt(invoice.due_date || invoice.due)}`;
     const customerRecord = getCustomerForInvoice(invoice);
 
-const autoPaused = Boolean(
-  customerRecord && customerRecord.reminders_paused
-);
+    const autoPaused = Boolean(
+      customerRecord && customerRecord.reminders_paused
+    );
 
-const manualWarning = autoPaused
-  ? ' ⚠ Attenzione: gli auto-solleciti sono sospesi per questo cliente. Stai preparando un sollecito manuale, che rimane consentito e verrà registrato nello storico.'
-  : '';
+    const manualWarning = autoPaused
+      ? ' ⚠ Attenzione: gli auto-solleciti sono sospesi per questo cliente. Stai preparando un sollecito manuale, che rimane consentito e verrà registrato nello storico.'
+      : '';
 
-$('recommendation').textContent =
-  `${recommendationText(invoice)} Puoi scegliere un modello diverso prima dell’invio.${manualWarning}`;
+    $('recommendation').textContent =
+      `${recommendationText(invoice)} Puoi scegliere un modello diverso prima dell’invio.${manualWarning}`;
 
-$('recommendation').classList.toggle('manual-warning', autoPaused);
+    $('recommendation').classList.toggle('manual-warning', autoPaused);
 
-$('modalBack').style.display = 'flex';
-chooseModel(key);
+    $('modalBack').style.display = 'flex';
+    chooseModel(key);
   }
 
   function closeReminder() {
-  $('modalBack').style.display = 'none';
-  state.activeInvoice = null;
-  state.activeScheduledReminder = null;
-}
+    $('modalBack').style.display = 'none';
+    state.activeInvoice = null;
+    state.activeScheduledReminder = null;
+  }
 
   function chooseModel(key) {
     if (!state.activeInvoice) return;
@@ -909,56 +935,56 @@ chooseModel(key);
   }
 
   async function openEmail() {
-  const email =
-    state.activeInvoice?.customer_email ||
-    state.activeInvoice?.email ||
-    '';
+    const email =
+      state.activeInvoice?.customer_email ||
+      state.activeInvoice?.email ||
+      '';
 
-  if (state.activeScheduledReminder && state.session) {
-    const reminder = state.activeScheduledReminder;
+    if (state.activeScheduledReminder && state.session) {
+      const reminder = state.activeScheduledReminder;
 
-    const { error } = await state.supabase
-      .from('reminders')
-      .update({
-        status: 'sent',
-        channel: 'email',
-        sent_at: new Date().toISOString(),
-        subject_snapshot: $('mailSubject').value,
-        body_snapshot: $('mailBody').value,
-        recipient_email: email || null
-      })
-      .eq('id', reminder.id)
-      .eq('status', 'scheduled');
+      const { error } = await state.supabase
+        .from('reminders')
+        .update({
+          status: 'sent',
+          channel: 'email',
+          sent_at: new Date().toISOString(),
+          subject_snapshot: $('mailSubject').value,
+          body_snapshot: $('mailBody').value,
+          recipient_email: email || null
+        })
+        .eq('id', reminder.id)
+        .eq('status', 'scheduled');
 
-    if (error) {
-      toast(`Impossibile approvare la bozza: ${error.message}`);
-      return;
+      if (error) {
+        toast(`Impossibile approvare la bozza: ${error.message}`);
+        return;
+      }
+
+      await logInvoiceActivity(
+        reminder.invoice_id,
+        'reminder_approved',
+        'Sollecito approvato: aperto il client email per l’invio manuale.',
+        {
+          reminder_id: reminder.id,
+          reminder_template_key: reminder.template_key,
+          recipient_email: email || '',
+          subject: $('mailSubject').value
+        }
+      );
+
+      state.activeScheduledReminder = null;
+      await loadScheduledReminders();
+      toast('Bozza approvata: apertura email in corso.');
+    } else {
+      await saveReminderLog('sent');
     }
 
-    await logInvoiceActivity(
-      reminder.invoice_id,
-      'reminder_approved',
-      'Sollecito approvato: aperto il client email per l’invio manuale.',
-      {
-        reminder_id: reminder.id,
-        reminder_template_key: reminder.template_key,
-        recipient_email: email || '',
-        subject: $('mailSubject').value
-      }
-    );
-
-    state.activeScheduledReminder = null;
-    await loadScheduledReminders();
-    toast('Bozza approvata: apertura email in corso.');
-  } else {
-    await saveReminderLog('sent');
+    window.location.href =
+      `mailto:${encodeURIComponent(email)}` +
+      `?subject=${encodeURIComponent($('mailSubject').value)}` +
+      `&body=${encodeURIComponent($('mailBody').value)}`;
   }
-
-  window.location.href =
-    `mailto:${encodeURIComponent(email)}` +
-    `?subject=${encodeURIComponent($('mailSubject').value)}` +
-    `&body=${encodeURIComponent($('mailBody').value)}`;
-}
   async function signUp() {
     if (!configured()) {
       toast('Prima configura Project URL e Publishable key nel file app.js.');
@@ -973,34 +999,34 @@ chooseModel(key);
       return;
     }
 
-const { data, error } = await state.supabase.auth.signUp({
-  email,
-  password,
-  options: {
-    emailRedirectTo: 'https://venturalessio.github.io/incassaprima/app/',
-    data: {
-      organization_name: organizationName || undefined
-    }
-  }
-});
+    const { data, error } = await state.supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: 'https://venturalessio.github.io/incassaprima/app/',
+        data: {
+          organization_name: organizationName || undefined
+        }
+      }
+    });
 
     if (error) {
       toast(`Registrazione non riuscita: ${error.message}`);
       return;
     }
 
-if (data.session) {
-  state.session = data.session;
-  updateAccountUi();
-  await loadCloudData();
-  setStatus(`Cloud attivo · ${email}`, 'success');
-  closeAuth();
-  toast('Account creato e cloud attivo.');
-} else {
-  closeAuth();
-  setStatus('Account creato. Conferma l’email per attivare il cloud.', 'warning');
-  toast('Controlla la tua email e conferma l’indirizzo.');
-}
+    if (data.session) {
+      state.session = data.session;
+      updateAccountUi();
+      await loadCloudData();
+      setStatus(`Cloud attivo · ${email}`, 'success');
+      closeAuth();
+      toast('Account creato e cloud attivo.');
+    } else {
+      closeAuth();
+      setStatus('Account creato. Conferma l’email per attivare il cloud.', 'warning');
+      toast('Controlla la tua email e conferma l’indirizzo.');
+    }
   }
 
   async function signIn() {
@@ -1038,8 +1064,8 @@ if (data.session) {
     state.customers = [];
     state.invoices = [];
     state.scheduledReminders = [];
-state.activeScheduledReminder = null;
-updateApprovalBadge();
+    state.activeScheduledReminder = null;
+    updateApprovalBadge();
     normalizeLocalInvoices();
     updateCustomerOptions();
     render();
@@ -1080,473 +1106,473 @@ updateApprovalBadge();
   }
 
   function normalizeCsvHeader(value) {
-  return String(value || '')
-    .replace(/^\uFEFF/, '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
+    return String(value || '')
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
 
-function detectCsvDelimiter(text) {
-  const firstLine = String(text || '')
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/)
-    .find((line) => line.trim());
+  function detectCsvDelimiter(text) {
+    const firstLine = String(text || '')
+      .replace(/^\uFEFF/, '')
+      .split(/\r?\n/)
+      .find((line) => line.trim());
 
-  if (!firstLine) return ',';
+    if (!firstLine) return ',';
 
-  const candidates = [',', ';', '\t'];
-  return candidates
-    .map((delimiter) => ({
-      delimiter,
-      count: firstLine.split(delimiter).length - 1
-    }))
-    .sort((a, b) => b.count - a.count)[0].delimiter;
-}
+    const candidates = [',', ';', '\t'];
+    return candidates
+      .map((delimiter) => ({
+        delimiter,
+        count: firstLine.split(delimiter).length - 1
+      }))
+      .sort((a, b) => b.count - a.count)[0].delimiter;
+  }
 
-function parseCsvText(text, delimiter) {
-  const rows = [];
-  let row = [];
-  let value = '';
-  let quoted = false;
+  function parseCsvText(text, delimiter) {
+    const rows = [];
+    let row = [];
+    let value = '';
+    let quoted = false;
 
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index];
+      const next = text[index + 1];
 
-    if (char === '"') {
-      if (quoted && next === '"') {
-        value += '"';
-        index += 1;
-      } else {
-        quoted = !quoted;
-      }
-      continue;
-    }
-
-    if (!quoted && char === delimiter) {
-      row.push(value.trim());
-      value = '';
-      continue;
-    }
-
-    if (!quoted && (char === '\n' || char === '\r')) {
-      if (char === '\r' && next === '\n') {
-        index += 1;
+      if (char === '"') {
+        if (quoted && next === '"') {
+          value += '"';
+          index += 1;
+        } else {
+          quoted = !quoted;
+        }
+        continue;
       }
 
-      row.push(value.trim());
-
-      if (row.some((cell) => cell !== '')) {
-        rows.push(row);
+      if (!quoted && char === delimiter) {
+        row.push(value.trim());
+        value = '';
+        continue;
       }
 
-      row = [];
-      value = '';
-      continue;
+      if (!quoted && (char === '\n' || char === '\r')) {
+        if (char === '\r' && next === '\n') {
+          index += 1;
+        }
+
+        row.push(value.trim());
+
+        if (row.some((cell) => cell !== '')) {
+          rows.push(row);
+        }
+
+        row = [];
+        value = '';
+        continue;
+      }
+
+      value += char;
     }
 
-    value += char;
-  }
+    row.push(value.trim());
 
-  row.push(value.trim());
-
-  if (row.some((cell) => cell !== '')) {
-    rows.push(row);
-  }
-
-  return rows;
-}
-
-function normalizeImportedStatus(value) {
-  const normalized = normalizeCsvHeader(value);
-
-  const statuses = {
-    open: 'open',
-    aperta: 'open',
-    daincassare: 'open',
-    unpaid: 'open',
-
-    paid: 'paid',
-    pagata: 'paid',
-    pagato: 'paid',
-
-    promised: 'promised',
-    promessapagamento: 'promised',
-    promessadipagamento: 'promised',
-
-    disputed: 'disputed',
-    contestata: 'disputed',
-    contestato: 'disputed',
-
-    paused: 'paused',
-    sospesa: 'paused',
-    sospeso: 'paused'
-  };
-
-  return statuses[normalized] || 'open';
-}
-
-function normalizeImportedDate(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-
-  let year;
-  let month;
-  let day;
-
-  let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-
-  if (match) {
-    year = Number(match[1]);
-    month = Number(match[2]);
-    day = Number(match[3]);
-  } else {
-    match = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-
-    if (!match) return null;
-
-    day = Number(match[1]);
-    month = Number(match[2]);
-    year = Number(match[3]);
-  }
-
-  const date = new Date(year, month - 1, day);
-
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function importKey(customerName, invoiceNumber, dueDate) {
-  const customer = String(customerName || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
-  const number = String(invoiceNumber || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
-  if (!customer || !number || !dueDate) return null;
-
-  return `${customer}::${number}::${dueDate}`;
-}
-
-function currentImportInvoiceSource() {
-  return state.session
-    ? state.invoices
-    : state.localInvoices.map(localToView);
-}
-
-function buildExistingImportKeys() {
-  const keys = new Set();
-
-  currentImportInvoiceSource().forEach((invoice) => {
-    const key = importKey(
-      invoice.customer_name || invoice.customer,
-      invoice.invoice_number || invoice.number,
-      invoice.due_date || invoice.due
-    );
-
-    if (key) keys.add(key);
-  });
-
-  return keys;
-}
-
-function csvValueByAliases(row, columns, aliases) {
-  for (const alias of aliases) {
-    const index = columns[alias];
-
-    if (index !== undefined && row[index] !== undefined) {
-      return String(row[index] || '').trim();
+    if (row.some((cell) => cell !== '')) {
+      rows.push(row);
     }
+
+    return rows;
   }
 
-  return '';
-}
+  function normalizeImportedStatus(value) {
+    const normalized = normalizeCsvHeader(value);
 
-function formatImportProblems(rows) {
-  if (!rows.length) return '';
+    const statuses = {
+      open: 'open',
+      aperta: 'open',
+      daincassare: 'open',
+      unpaid: 'open',
 
-  const preview = rows
-    .slice(0, 8)
-    .map((row) => `• Riga ${row.line}: ${row.reason}`)
-    .join('\n');
+      paid: 'paid',
+      pagata: 'paid',
+      pagato: 'paid',
 
-  const suffix =
-    rows.length > 8
-      ? `\n• …e altre ${rows.length - 8} righe`
-      : '';
+      promised: 'promised',
+      promessapagamento: 'promised',
+      promessadipagamento: 'promised',
 
-  return `\n\nDettaglio:\n${preview}${suffix}`;
-}
+      disputed: 'disputed',
+      contestata: 'disputed',
+      contestato: 'disputed',
 
-async function readImportRows(file) {
-  const fileName = String(file.name || '').toLowerCase();
-  const isCsv = fileName.endsWith('.csv');
-  const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+      paused: 'paused',
+      sospesa: 'paused',
+      sospeso: 'paused'
+    };
 
-  if (!isCsv && !isExcel) {
-    toast('Formato non supportato. Seleziona un file CSV, XLSX oppure XLS.');
-    return null;
+    return statuses[normalized] || 'open';
   }
 
-  if (isCsv) {
-    const text = await file.text();
-    const delimiter = detectCsvDelimiter(text);
+  function normalizeImportedDate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    let year;
+    let month;
+    let day;
+
+    let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+
+    if (match) {
+      year = Number(match[1]);
+      month = Number(match[2]);
+      day = Number(match[3]);
+    } else {
+      match = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+
+      if (!match) return null;
+
+      day = Number(match[1]);
+      month = Number(match[2]);
+      year = Number(match[3]);
+    }
+
+    const date = new Date(year, month - 1, day);
+
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function importKey(customerName, invoiceNumber, dueDate) {
+    const customer = String(customerName || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+
+    const number = String(invoiceNumber || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+
+    if (!customer || !number || !dueDate) return null;
+
+    return `${customer}::${number}::${dueDate}`;
+  }
+
+  function currentImportInvoiceSource() {
+    return state.session
+      ? state.invoices
+      : state.localInvoices.map(localToView);
+  }
+
+  function buildExistingImportKeys() {
+    const keys = new Set();
+
+    currentImportInvoiceSource().forEach((invoice) => {
+      const key = importKey(
+        invoice.customer_name || invoice.customer,
+        invoice.invoice_number || invoice.number,
+        invoice.due_date || invoice.due
+      );
+
+      if (key) keys.add(key);
+    });
+
+    return keys;
+  }
+
+  function csvValueByAliases(row, columns, aliases) {
+    for (const alias of aliases) {
+      const index = columns[alias];
+
+      if (index !== undefined && row[index] !== undefined) {
+        return String(row[index] || '').trim();
+      }
+    }
+
+    return '';
+  }
+
+  function formatImportProblems(rows) {
+    if (!rows.length) return '';
+
+    const preview = rows
+      .slice(0, 8)
+      .map((row) => `• Riga ${row.line}: ${row.reason}`)
+      .join('\n');
+
+    const suffix =
+      rows.length > 8
+        ? `\n• …e altre ${rows.length - 8} righe`
+        : '';
+
+    return `\n\nDettaglio:\n${preview}${suffix}`;
+  }
+
+  async function readImportRows(file) {
+    const fileName = String(file.name || '').toLowerCase();
+    const isCsv = fileName.endsWith('.csv');
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    if (!isCsv && !isExcel) {
+      toast('Formato non supportato. Seleziona un file CSV, XLSX oppure XLS.');
+      return null;
+    }
+
+    if (isCsv) {
+      const text = await file.text();
+      const delimiter = detectCsvDelimiter(text);
+
+      return {
+        parsedRows: parseCsvText(text, delimiter),
+        sourceLabel: 'CSV',
+        details: `Separatore rilevato: ${delimiter === '\t' ? 'tabulazione' : delimiter}`
+      };
+    }
+
+    if (typeof XLSX === 'undefined') {
+      toast('Lettore Excel non disponibile. Ricarica la pagina e riprova.');
+      return null;
+    }
+
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+
+    if (!worksheet) {
+      toast('Il file Excel non contiene fogli leggibili.');
+      return null;
+    }
+
+    const parsedRows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: '',
+      raw: false,
+      dateNF: 'yyyy-mm-dd'
+    });
 
     return {
-      parsedRows: parseCsvText(text, delimiter),
-      sourceLabel: 'CSV',
-      details: `Separatore rilevato: ${delimiter === '\t' ? 'tabulazione' : delimiter}`
+      parsedRows,
+      sourceLabel: 'Excel',
+      details: `Foglio importato: ${firstSheetName}`
     };
   }
 
-  if (typeof XLSX === 'undefined') {
-    toast('Lettore Excel non disponibile. Ricarica la pagina e riprova.');
-    return null;
-  }
+  async function importFile(file) {
+    if (!file) return;
 
-  const data = await file.arrayBuffer();
-  const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+    try {
+      const importedData = await readImportRows(file);
 
-  if (!worksheet) {
-    toast('Il file Excel non contiene fogli leggibili.');
-    return null;
-  }
-
-  const parsedRows = XLSX.utils.sheet_to_json(worksheet, {
-    header: 1,
-    defval: '',
-    raw: false,
-    dateNF: 'yyyy-mm-dd'
-  });
-
-  return {
-    parsedRows,
-    sourceLabel: 'Excel',
-    details: `Foglio importato: ${firstSheetName}`
-  };
-}
-
-async function importFile(file) {
-  if (!file) return;
-
-  try {
-    const importedData = await readImportRows(file);
-
-if (!importedData) {
-  return;
-}
-
-const { parsedRows, sourceLabel, details } = importedData;
-
-    if (parsedRows.length < 2) {
-      toast('Il file è vuoto oppure non contiene righe da importare.');
-      return;
-    }
-
-    const headerRow = parsedRows[0].map(normalizeCsvHeader);
-
-    const columns = {};
-    headerRow.forEach((header, index) => {
-      if (header && columns[header] === undefined) {
-        columns[header] = index;
+      if (!importedData) {
+        return;
       }
-    });
 
-    const customerColumn = [
-      'cliente',
-      'customer',
-      'ragionesociale',
-      'nomecliente',
-      'denominazione'
-    ].find((key) => columns[key] !== undefined);
+      const { parsedRows, sourceLabel, details } = importedData;
 
-    const amountColumn = [
-      'importoeuro',
-      'importo',
-      'amount',
-      'totale',
-      'importofattura'
-    ].find((key) => columns[key] !== undefined);
+      if (parsedRows.length < 2) {
+        toast('Il file è vuoto oppure non contiene righe da importare.');
+        return;
+      }
 
-    const dueDateColumn = [
-      'scadenza',
-      'datascadenza',
-      'duedate',
-      'due'
-    ].find((key) => columns[key] !== undefined);
+      const headerRow = parsedRows[0].map(normalizeCsvHeader);
 
-    if (!customerColumn || !amountColumn || !dueDateColumn) {
-      toast(
-        'Intestazioni non valide. Servono almeno: cliente, importo e scadenza.'
-      );
-      return;
-    }
+      const columns = {};
+      headerRow.forEach((header, index) => {
+        if (header && columns[header] === undefined) {
+          columns[header] = index;
+        }
+      });
 
-    const existingKeys = buildExistingImportKeys();
-    const fileKeys = new Set();
-    const validRows = [];
-    const invalidRows = [];
-    const duplicateRows = [];
-
-    parsedRows.slice(1).forEach((row, index) => {
-      const line = index + 2;
-
-      const customerName = csvValueByAliases(row, columns, [
+      const customerColumn = [
         'cliente',
         'customer',
         'ragionesociale',
         'nomecliente',
         'denominazione'
-      ]);
+      ].find((key) => columns[key] !== undefined);
 
-      const invoiceNumber = csvValueByAliases(row, columns, [
-        'numerofattura',
-        'numero',
-        'fattura',
-        'invoicenumber',
-        'invoice'
-      ]);
-
-      const amountRaw = csvValueByAliases(row, columns, [
+      const amountColumn = [
         'importoeuro',
         'importo',
         'amount',
         'totale',
         'importofattura'
-      ]);
+      ].find((key) => columns[key] !== undefined);
 
-      const dueDateRaw = csvValueByAliases(row, columns, [
+      const dueDateColumn = [
         'scadenza',
         'datascadenza',
         'duedate',
         'due'
-      ]);
+      ].find((key) => columns[key] !== undefined);
 
-      const email = csvValueByAliases(row, columns, [
-        'email',
-        'emailcliente',
-        'customeremail'
-      ]);
-
-      const statusRaw = csvValueByAliases(row, columns, [
-        'stato',
-        'status'
-      ]);
-
-      const issueDateRaw = csvValueByAliases(row, columns, [
-        'dataemissione',
-        'emissione',
-        'issuedate',
-        'issue'
-      ]);
-
-      if (!customerName) {
-        invalidRows.push({
-          line,
-          reason: 'cliente mancante'
-        });
+      if (!customerColumn || !amountColumn || !dueDateColumn) {
+        toast(
+          'Intestazioni non valide. Servono almeno: cliente, importo e scadenza.'
+        );
         return;
       }
 
-      if (!invoiceNumber) {
-  invalidRows.push({
-    line,
-    reason: 'numero fattura mancante'
-  });
-  return;
-}
+      const existingKeys = buildExistingImportKeys();
+      const fileKeys = new Set();
+      const validRows = [];
+      const invalidRows = [];
+      const duplicateRows = [];
 
-      const amount = parseItalianAmount(amountRaw);
+      parsedRows.slice(1).forEach((row, index) => {
+        const line = index + 2;
 
-      if (!Number.isFinite(amount) || amount <= 0) {
-        invalidRows.push({
+        const customerName = csvValueByAliases(row, columns, [
+          'cliente',
+          'customer',
+          'ragionesociale',
+          'nomecliente',
+          'denominazione'
+        ]);
+
+        const invoiceNumber = csvValueByAliases(row, columns, [
+          'numerofattura',
+          'numero',
+          'fattura',
+          'invoicenumber',
+          'invoice'
+        ]);
+
+        const amountRaw = csvValueByAliases(row, columns, [
+          'importoeuro',
+          'importo',
+          'amount',
+          'totale',
+          'importofattura'
+        ]);
+
+        const dueDateRaw = csvValueByAliases(row, columns, [
+          'scadenza',
+          'datascadenza',
+          'duedate',
+          'due'
+        ]);
+
+        const email = csvValueByAliases(row, columns, [
+          'email',
+          'emailcliente',
+          'customeremail'
+        ]);
+
+        const statusRaw = csvValueByAliases(row, columns, [
+          'stato',
+          'status'
+        ]);
+
+        const issueDateRaw = csvValueByAliases(row, columns, [
+          'dataemissione',
+          'emissione',
+          'issuedate',
+          'issue'
+        ]);
+
+        if (!customerName) {
+          invalidRows.push({
+            line,
+            reason: 'cliente mancante'
+          });
+          return;
+        }
+
+        if (!invoiceNumber) {
+          invalidRows.push({
+            line,
+            reason: 'numero fattura mancante'
+          });
+          return;
+        }
+
+        const amount = parseItalianAmount(amountRaw);
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          invalidRows.push({
+            line,
+            reason: 'importo non valido o non positivo'
+          });
+          return;
+        }
+
+        const dueDate = normalizeImportedDate(dueDateRaw);
+
+        if (!dueDate) {
+          invalidRows.push({
+            line,
+            reason: 'scadenza non valida; usa YYYY-MM-DD o GG/MM/AAAA'
+          });
+          return;
+        }
+
+        const issueDate = issueDateRaw
+          ? normalizeImportedDate(issueDateRaw)
+          : null;
+
+        if (issueDateRaw && !issueDate) {
+          invalidRows.push({
+            line,
+            reason: 'data emissione non valida'
+          });
+          return;
+        }
+
+        const key = importKey(customerName, invoiceNumber, dueDate);
+
+        if (key && (existingKeys.has(key) || fileKeys.has(key))) {
+          duplicateRows.push({
+            line,
+            reason: `fattura duplicata (${customerName} · ${invoiceNumber} · ${dueDate})`
+          });
+          return;
+        }
+
+        if (key) {
+          fileKeys.add(key);
+        }
+
+        validRows.push({
           line,
-          reason: 'importo non valido o non positivo'
+          customerName,
+          invoiceNumber,
+          amount,
+          dueDate,
+          issueDate,
+          email,
+          status: normalizeImportedStatus(statusRaw)
         });
-        return;
-      }
-
-      const dueDate = normalizeImportedDate(dueDateRaw);
-
-      if (!dueDate) {
-        invalidRows.push({
-          line,
-          reason: 'scadenza non valida; usa YYYY-MM-DD o GG/MM/AAAA'
-        });
-        return;
-      }
-
-      const issueDate = issueDateRaw
-        ? normalizeImportedDate(issueDateRaw)
-        : null;
-
-      if (issueDateRaw && !issueDate) {
-        invalidRows.push({
-          line,
-          reason: 'data emissione non valida'
-        });
-        return;
-      }
-
-      const key = importKey(customerName, invoiceNumber, dueDate);
-
-      if (key && (existingKeys.has(key) || fileKeys.has(key))) {
-        duplicateRows.push({
-          line,
-          reason: `fattura duplicata (${customerName} · ${invoiceNumber} · ${dueDate})`
-        });
-        return;
-      }
-
-      if (key) {
-        fileKeys.add(key);
-      }
-
-      validRows.push({
-        line,
-        customerName,
-        invoiceNumber,
-        amount,
-        dueDate,
-        issueDate,
-        email,
-        status: normalizeImportedStatus(statusRaw)
       });
-    });
 
-    if (!validRows.length) {
-  const problems = [...invalidRows, ...duplicateRows];
+      if (!validRows.length) {
+        const problems = [...invalidRows, ...duplicateRows];
 
-  showImportSummary(
-    `Nessuna fattura importabile.\n\n` +
-    `${invalidRows.length} righe non valide.\n` +
-    `${duplicateRows.length} fatture duplicate ignorate.\n\n` +
-    `Dettaglio:\n${formatImportProblems(problems)}`
-  );
+        showImportSummary(
+          `Nessuna fattura importabile.\n\n` +
+          `${invalidRows.length} righe non valide.\n` +
+          `${duplicateRows.length} fatture duplicate ignorate.\n\n` +
+          `Dettaglio:\n${formatImportProblems(problems)}`
+        );
 
-  return;
-}
+        return;
+      }
 
-    const destination = state.session ? 'nel cloud' : 'in locale';
+      const destination = state.session ? 'nel cloud' : 'in locale';
 
-    const confirmed = window.confirm(
-      `Anteprima importazione ${sourceLabel}\n\n` +
+      const confirmed = window.confirm(
+        `Anteprima importazione ${sourceLabel}\n\n` +
         `File: ${file.name}\n` +
         `${details}\n\n` +
         `Fatture da importare: ${validRows.length}\n` +
@@ -1555,181 +1581,182 @@ const { parsedRows, sourceLabel, details } = importedData;
         `Le ${validRows.length} fatture valide verranno salvate ${destination}. ` +
         `Vuoi procedere?` +
         formatImportProblems([...invalidRows, ...duplicateRows])
-    );
+      );
 
-    if (!confirmed) {
-      toast('Importazione annullata.');
-      return;
-    }
+      if (!confirmed) {
+        toast('Importazione annullata.');
+        return;
+      }
 
-    if (!state.session) {
-      validRows.forEach((row) => {
-        state.localInvoices.push({
-          id: `${Date.now()}-${Math.random()}`,
-          customer: row.customerName,
-          number: row.invoiceNumber,
-          amount: row.amount,
-          due: row.dueDate,
-          email: row.email,
-          status: row.status,
-          paid: row.status === 'paid',
-          paid_at: row.status === 'paid' ? new Date().toISOString() : null,
-          issue_date: row.issueDate
+      if (!state.session) {
+        validRows.forEach((row) => {
+          state.localInvoices.push({
+            id: `${Date.now()}-${Math.random()}`,
+            customer: row.customerName,
+            number: row.invoiceNumber,
+            amount: row.amount,
+            due: row.dueDate,
+            email: row.email,
+            status: row.status,
+            paid: row.status === 'paid',
+            paid_at: row.status === 'paid' ? new Date().toISOString() : null,
+            issue_date: row.issueDate
+          });
         });
+
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
+        render();
+
+        setTimeout(() => {
+          showImportSummary(
+            `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
+          );
+        }, 0);
+
+        return;
+      }
+
+      if (!state.organization) {
+        toast('Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.');
+        return;
+      }
+
+      const customerCache = new Map();
+
+      state.customers.forEach((customer) => {
+        customerCache.set(
+          String(customer.name || '').trim().toLowerCase(),
+          customer
+        );
       });
 
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(state.localInvoices));
-      render();
+      let imported = 0;
+      let failed = 0;
 
-      setTimeout(() => {
-  showImportSummary(
-    `${validRows.length} fatture importate in locale. ${duplicateRows.length} duplicate e ${invalidRows.length} righe non valide ignorate.`
-  );
-}, 0);
+      for (const row of validRows) {
+        const customerKey = row.customerName.trim().toLowerCase();
+        let customer = customerCache.get(customerKey);
 
-      return;
-    }
+        if (!customer) {
+          const { data, error } = await state.supabase
+            .from('customers')
+            .insert({
+              organization_id: state.organization.id,
+              name: row.customerName,
+              email: row.email || null
+            })
+            .select()
+            .single();
 
-    if (!state.organization) {
-      toast('Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.');
-      return;
-    }
+          if (error || !data) {
+            console.error('Errore creazione cliente durante importazione:', error);
+            failed += 1;
+            continue;
+          }
 
-    const customerCache = new Map();
+          customer = data;
+          customerCache.set(customerKey, customer);
+          state.customers.push(customer);
+        }
 
-    state.customers.forEach((customer) => {
-      customerCache.set(
-        String(customer.name || '').trim().toLowerCase(),
-        customer
-      );
-    });
-
-    let imported = 0;
-    let failed = 0;
-
-    for (const row of validRows) {
-      const customerKey = row.customerName.trim().toLowerCase();
-      let customer = customerCache.get(customerKey);
-
-      if (!customer) {
         const { data, error } = await state.supabase
-          .from('customers')
+          .from('invoices')
           .insert({
             organization_id: state.organization.id,
-            name: row.customerName,
-            email: row.email || null
+            customer_id: customer.id,
+            invoice_number: row.invoiceNumber || null,
+            amount_cents: Math.round(row.amount * 100),
+            issue_date: row.issueDate,
+            due_date: row.dueDate,
+            status: row.status,
+            paid_at: row.status === 'paid' ? new Date().toISOString() : null
           })
-          .select()
+          .select('*, customers(name, email)')
           .single();
 
         if (error || !data) {
-          console.error('Errore creazione cliente durante importazione:', error);
+          console.error('Errore creazione fattura durante importazione:', error);
           failed += 1;
           continue;
         }
 
-        customer = data;
-        customerCache.set(customerKey, customer);
-        state.customers.push(customer);
+        state.invoices.push({
+          ...data,
+          customer_name: data.customers
+            ? data.customers.name
+            : customer.name,
+          customer_email: data.customers
+            ? data.customers.email
+            : customer.email || '',
+          source: 'cloud'
+        });
+
+        imported += 1;
       }
 
-      const { data, error } = await state.supabase
-        .from('invoices')
-        .insert({
-          organization_id: state.organization.id,
-          customer_id: customer.id,
-          invoice_number: row.invoiceNumber || null,
-          amount_cents: Math.round(row.amount * 100),
-          issue_date: row.issueDate,
-          due_date: row.dueDate,
-          status: row.status,
-          paid_at: row.status === 'paid' ? new Date().toISOString() : null
-        })
-        .select('*, customers(name, email)')
-        .single();
+      updateCustomerOptions();
+      render();
 
-      if (error || !data) {
-        console.error('Errore creazione fattura durante importazione:', error);
-        failed += 1;
-        continue;
-      }
-
-      state.invoices.push({
-        ...data,
-        customer_name: data.customers
-          ? data.customers.name
-          : customer.name,
-        customer_email: data.customers
-          ? data.customers.email
-          : customer.email || '',
-        source: 'cloud'
-      });
-
-      imported += 1;
+      setTimeout(() => {
+        showImportSummary(
+          `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`
+        );
+      }, 0);
+    } catch (error) {
+      console.error('Errore importazione file:', error);
+      toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
     }
-
-    updateCustomerOptions();
-    render();
-
-    setTimeout(() => {
-  showImportSummary(
-    `${imported} fatture importate nel cloud. ${duplicateRows.length} duplicate, ${invalidRows.length} non valide${failed ? ` e ${failed} non salvate` : ''}.`
-  );
-}, 0);
-  } catch (error) {
-    console.error('Errore importazione file:', error);
-    toast('Impossibile leggere o importare il file. Verifica formato e intestazioni.');
-  } }
+  }
 
   function customerImportUpdate(existingCustomer, row, mode) {
-  const update = {};
+    const update = {};
 
-  if (mode === 'fill-missing') {
-    if (!existingCustomer.email && row.email) {
-      update.email = row.email;
+    if (mode === 'fill-missing') {
+      if (!existingCustomer.email && row.email) {
+        update.email = row.email;
+      }
+
+      if (!existingCustomer.pec && row.pec) {
+        update.pec = row.pec;
+      }
+
+      if (!existingCustomer.phone && row.phone) {
+        update.phone = row.phone;
+      }
     }
 
-    if (!existingCustomer.pec && row.pec) {
-      update.pec = row.pec;
+    if (mode === 'overwrite') {
+      if (row.email) {
+        update.email = row.email;
+      }
+
+      if (row.pec) {
+        update.pec = row.pec;
+      }
+
+      if (row.phone) {
+        update.phone = row.phone;
+      }
     }
 
-    if (!existingCustomer.phone && row.phone) {
-      update.phone = row.phone;
-    }
+    return update;
   }
 
-  if (mode === 'overwrite') {
-    if (row.email) {
-      update.email = row.email;
-    }
+  function chooseCustomerImportMode(summary) {
+    return new Promise((resolve) => {
+      const back = $('importSummaryBack');
+      const title = $('importSummaryTitle');
+      const content = $('importSummaryContent');
 
-    if (row.pec) {
-      update.pec = row.pec;
-    }
+      const skipButton = $('importCustomersSkipBtn');
+      const fillMissingButton = $('importCustomersFillMissingBtn');
+      const overwriteButton = $('importCustomersOverwriteBtn');
+      const closeButton = $('closeImportSummaryActionBtn');
+      const closeIconButton = $('closeImportSummaryBtn');
 
-    if (row.phone) {
-      update.phone = row.phone;
-    }
-  }
+      title.textContent = 'Come gestire i clienti già presenti';
 
-  return update;
-}
-
-function chooseCustomerImportMode(summary) {
-  return new Promise((resolve) => {
-    const back = $('importSummaryBack');
-    const title = $('importSummaryTitle');
-    const content = $('importSummaryContent');
-
-    const skipButton = $('importCustomersSkipBtn');
-    const fillMissingButton = $('importCustomersFillMissingBtn');
-    const overwriteButton = $('importCustomersOverwriteBtn');
-    const closeButton = $('closeImportSummaryActionBtn');
-    const closeIconButton = $('closeImportSummaryBtn');
-
-    title.textContent = 'Come gestire i clienti già presenti';
-
-    content.innerHTML = `
+      content.innerHTML = `
       <p>Nel file sono stati trovati clienti già presenti nella tua anagrafica.</p>
 
       <div class="history-entry">
@@ -1745,273 +1772,337 @@ function chooseCustomerImportMode(summary) {
       </p>
     `;
 
-    closeButton.style.display = 'none';
-    skipButton.style.display = 'inline-flex';
-    fillMissingButton.style.display = 'inline-flex';
-    overwriteButton.style.display = 'inline-flex';
+      closeButton.style.display = 'none';
+      skipButton.style.display = 'inline-flex';
+      fillMissingButton.style.display = 'inline-flex';
+      overwriteButton.style.display = 'inline-flex';
 
-    back.style.display = 'flex';
+      back.style.display = 'flex';
 
-    let completed = false;
+      let completed = false;
 
-    const finish = (mode) => {
-      if (completed) return;
-      completed = true;
+      const finish = (mode) => {
+        if (completed) return;
+        completed = true;
 
-      skipButton.style.display = 'none';
-      fillMissingButton.style.display = 'none';
-      overwriteButton.style.display = 'none';
-      closeButton.style.display = 'inline-flex';
+        skipButton.style.display = 'none';
+        fillMissingButton.style.display = 'none';
+        overwriteButton.style.display = 'none';
+        closeButton.style.display = 'inline-flex';
 
-      back.style.display = 'none';
+        back.style.display = 'none';
 
-      skipButton.onclick = null;
-      fillMissingButton.onclick = null;
-      overwriteButton.onclick = null;
-      closeButton.onclick = null;
-      closeIconButton.onclick = null;
+        skipButton.onclick = null;
+        fillMissingButton.onclick = null;
+        overwriteButton.onclick = null;
+        closeButton.onclick = null;
+        closeIconButton.onclick = null;
 
-      resolve(mode);
-    };
-
-    skipButton.onclick = () => finish('skip');
-    fillMissingButton.onclick = () => finish('fill-missing');
-    overwriteButton.onclick = () => finish('overwrite');
-
-    closeButton.onclick = () => finish('skip');
-    closeIconButton.onclick = () => finish('skip');
-  });
-}
-
-async function importCustomersFile(file) {
-  if (!file) return;
-
-  try {
-    const importedData = await readImportRows(file);
-
-    if (!importedData) {
-      return;
-    }
-
-    const { parsedRows, sourceLabel, details } = importedData;
-
-    if (parsedRows.length < 2) {
-      toast('Il file è vuoto oppure non contiene righe da importare.');
-      return;
-    }
-
-    const headerRow = parsedRows[0].map(normalizeCsvHeader);
-
-    const columns = {};
-    headerRow.forEach((header, index) => {
-      if (header && columns[header] === undefined) {
-        columns[header] = index;
-      }
-    });
-
-    const nameAliases = [
-      'nome',
-      'nomecliente',
-      'cliente',
-      'ragionesociale',
-      'denominazione',
-      'name',
-      'customer',
-      'customername'
-    ];
-
-    const emailAliases = [
-      'email',
-      'emailcliente',
-      'customeremail',
-      'mail'
-    ];
-
-    const pecAliases = [
-      'pec',
-      'peccliente',
-      'customerpec'
-    ];
-
-    const phoneAliases = [
-      'telefono',
-      'tel',
-      'phone',
-      'cellulare',
-      'mobile'
-    ];
-
-    const nameColumn = nameAliases.find(
-      (key) => columns[key] !== undefined
-    );
-
-    if (!nameColumn) {
-      toast(
-        'Intestazioni non valide. Serve una colonna nome cliente: nome, cliente o ragione sociale.'
-      );
-      return;
-    }
-
-    const existingCustomers = new Map();
-
-    state.customers.forEach((customer) => {
-      const key = String(customer.name || '').trim().toLowerCase();
-
-      if (key && !existingCustomers.has(key)) {
-        existingCustomers.set(key, customer);
-      }
-    });
-
-    const fileKeys = new Set();
-    const newRows = [];
-    const existingRows = [];
-    const invalidRows = [];
-    const duplicateRows = [];
-
-    parsedRows.slice(1).forEach((row, index) => {
-      const line = index + 2;
-
-      const name = csvValueByAliases(row, columns, nameAliases);
-      const email = csvValueByAliases(row, columns, emailAliases);
-      const pec = csvValueByAliases(row, columns, pecAliases);
-      const phone = csvValueByAliases(row, columns, phoneAliases);
-
-      if (!name) {
-        invalidRows.push({
-          line,
-          reason: 'nome cliente mancante'
-        });
-        return;
-      }
-
-      const key = name.trim().toLowerCase();
-
-      if (fileKeys.has(key)) {
-        duplicateRows.push({
-          line,
-          reason: `cliente ripetuto nel file (${name})`
-        });
-        return;
-      }
-
-      fileKeys.add(key);
-
-      const customerRow = {
-        line,
-        name,
-        email: email || null,
-        pec: pec || null,
-        phone: phone || null
+        resolve(mode);
       };
 
-      const existingCustomer = existingCustomers.get(key);
+      skipButton.onclick = () => finish('skip');
+      fillMissingButton.onclick = () => finish('fill-missing');
+      overwriteButton.onclick = () => finish('overwrite');
 
-      if (existingCustomer) {
-        existingRows.push({
-          ...customerRow,
-          customer: existingCustomer
-        });
+      closeButton.onclick = () => finish('skip');
+      closeIconButton.onclick = () => finish('skip');
+    });
+  }
+
+  async function importCustomersFile(file) {
+    if (!file) return;
+
+    try {
+      const importedData = await readImportRows(file);
+
+      if (!importedData) {
         return;
       }
 
-      newRows.push(customerRow);
-    });
+      const { parsedRows, sourceLabel, details } = importedData;
 
-    if (!newRows.length && !existingRows.length) {
-      const problems = [...invalidRows, ...duplicateRows];
+      if (parsedRows.length < 2) {
+        toast('Il file è vuoto oppure non contiene righe da importare.');
+        return;
+      }
 
-      showImportSummary(
-        `Nessun cliente importabile.\n\n` +
-        `${invalidRows.length} righe non valide.\n` +
-        `${duplicateRows.length} clienti ripetuti nel file ignorati.\n\n` +
-        `Dettaglio:\n${formatImportProblems(problems)}`
-      );
+      const headerRow = parsedRows[0].map(normalizeCsvHeader);
 
-      return;
-    }
-
-    const existingMode = existingRows.length
-  ? await chooseCustomerImportMode({
-      newCustomers: newRows.length,
-      existingCustomers: existingRows.length,
-      invalidRows: invalidRows.length,
-      duplicateRows: duplicateRows.length
-    })
-  : 'skip';
-
-    const updateCount = existingRows.filter((row) => {
-      return Object.keys(
-        customerImportUpdate(row.customer, row, existingMode)
-      ).length > 0;
-    }).length;
-
-    const customersToUpdate = existingRows
-  .filter((row) => {
-    return Object.keys(
-      customerImportUpdate(row.customer, row, existingMode)
-    ).length > 0;
-  })
-  .map((row) => {
-    const update = customerImportUpdate(
-      row.customer,
-      row,
-      existingMode
-    );
-
-    const fields = [];
-
-    if (update.email) fields.push('email');
-    if (update.pec) fields.push('PEC');
-    if (update.phone) fields.push('telefono');
-
-    return `• ${row.name}: ${fields.join(', ')}`;
-  });
-
-const updateDetails = customersToUpdate.length
-  ? `\n\nClienti da aggiornare:\n${customersToUpdate.join('\n')}`
-  : '';
-
-const confirmed = window.confirm(
-  `Conferma importazione clienti\n\n` +
-  `Nuovi clienti da creare: ${newRows.length}\n` +
-  `Clienti esistenti da aggiornare: ${updateCount}\n` +
-  `Clienti esistenti ignorati: ${existingRows.length - updateCount}\n` +
-  `Righe non valide: ${invalidRows.length}\n` +
-  `Ripetuti nel file ignorati: ${duplicateRows.length}\n\n` +
-  `Modalità clienti esistenti: ` +
-  `${existingMode === 'fill-missing'
-    ? 'completa campi mancanti'
-    : existingMode === 'overwrite'
-      ? 'aggiorna con Excel'
-      : 'ignora'}.` +
-  updateDetails +
-  `\n\nVuoi procedere?` +
-  formatImportProblems([...invalidRows, ...duplicateRows])
-);
-
-    if (!confirmed) {
-      toast('Importazione annullata.');
-      return;
-    }
-
-    if (!state.session) {
-      let created = 0;
-      let updated = 0;
-
-      newRows.forEach((row) => {
-        state.customers.push({
-          id: `${Date.now()}-${Math.random()}`,
-          name: row.name,
-          email: row.email,
-          pec: row.pec,
-          phone: row.phone,
-          reminders_paused: false
-        });
-
-        created += 1;
+      const columns = {};
+      headerRow.forEach((header, index) => {
+        if (header && columns[header] === undefined) {
+          columns[header] = index;
+        }
       });
 
-      existingRows.forEach((row) => {
+      const nameAliases = [
+        'nome',
+        'nomecliente',
+        'cliente',
+        'ragionesociale',
+        'denominazione',
+        'name',
+        'customer',
+        'customername'
+      ];
+
+      const emailAliases = [
+        'email',
+        'emailcliente',
+        'customeremail',
+        'mail'
+      ];
+
+      const pecAliases = [
+        'pec',
+        'peccliente',
+        'customerpec'
+      ];
+
+      const phoneAliases = [
+        'telefono',
+        'tel',
+        'phone',
+        'cellulare',
+        'mobile'
+      ];
+
+      const nameColumn = nameAliases.find(
+        (key) => columns[key] !== undefined
+      );
+
+      if (!nameColumn) {
+        toast(
+          'Intestazioni non valide. Serve una colonna nome cliente: nome, cliente o ragione sociale.'
+        );
+        return;
+      }
+
+      const existingCustomers = new Map();
+
+      state.customers.forEach((customer) => {
+        const key = String(customer.name || '').trim().toLowerCase();
+
+        if (key && !existingCustomers.has(key)) {
+          existingCustomers.set(key, customer);
+        }
+      });
+
+      const fileKeys = new Set();
+      const newRows = [];
+      const existingRows = [];
+      const invalidRows = [];
+      const duplicateRows = [];
+
+      parsedRows.slice(1).forEach((row, index) => {
+        const line = index + 2;
+
+        const name = csvValueByAliases(row, columns, nameAliases);
+        const email = csvValueByAliases(row, columns, emailAliases);
+        const pec = csvValueByAliases(row, columns, pecAliases);
+        const phone = csvValueByAliases(row, columns, phoneAliases);
+
+        if (!name) {
+          invalidRows.push({
+            line,
+            reason: 'nome cliente mancante'
+          });
+          return;
+        }
+
+        const key = name.trim().toLowerCase();
+
+        if (fileKeys.has(key)) {
+          duplicateRows.push({
+            line,
+            reason: `cliente ripetuto nel file (${name})`
+          });
+          return;
+        }
+
+        fileKeys.add(key);
+
+        const customerRow = {
+          line,
+          name,
+          email: email || null,
+          pec: pec || null,
+          phone: phone || null
+        };
+
+        const existingCustomer = existingCustomers.get(key);
+
+        if (existingCustomer) {
+          existingRows.push({
+            ...customerRow,
+            customer: existingCustomer
+          });
+          return;
+        }
+
+        newRows.push(customerRow);
+      });
+
+      if (!newRows.length && !existingRows.length) {
+        const problems = [...invalidRows, ...duplicateRows];
+
+        showImportSummary(
+          `Nessun cliente importabile.\n\n` +
+          `${invalidRows.length} righe non valide.\n` +
+          `${duplicateRows.length} clienti ripetuti nel file ignorati.\n\n` +
+          `Dettaglio:\n${formatImportProblems(problems)}`
+        );
+
+        return;
+      }
+
+      const existingMode = existingRows.length
+        ? await chooseCustomerImportMode({
+          newCustomers: newRows.length,
+          existingCustomers: existingRows.length,
+          invalidRows: invalidRows.length,
+          duplicateRows: duplicateRows.length
+        })
+        : 'skip';
+
+      const updateCount = existingRows.filter((row) => {
+        return Object.keys(
+          customerImportUpdate(row.customer, row, existingMode)
+        ).length > 0;
+      }).length;
+
+      const customersToUpdate = existingRows
+        .filter((row) => {
+          return Object.keys(
+            customerImportUpdate(row.customer, row, existingMode)
+          ).length > 0;
+        })
+        .map((row) => {
+          const update = customerImportUpdate(
+            row.customer,
+            row,
+            existingMode
+          );
+
+          const fields = [];
+
+          if (update.email) fields.push('email');
+          if (update.pec) fields.push('PEC');
+          if (update.phone) fields.push('telefono');
+
+          return `• ${row.name}: ${fields.join(', ')}`;
+        });
+
+      const updateDetails = customersToUpdate.length
+        ? `\n\nClienti da aggiornare:\n${customersToUpdate.join('\n')}`
+        : '';
+
+      const confirmed = window.confirm(
+        `Conferma importazione clienti\n\n` +
+        `Nuovi clienti da creare: ${newRows.length}\n` +
+        `Clienti esistenti da aggiornare: ${updateCount}\n` +
+        `Clienti esistenti ignorati: ${existingRows.length - updateCount}\n` +
+        `Righe non valide: ${invalidRows.length}\n` +
+        `Ripetuti nel file ignorati: ${duplicateRows.length}\n\n` +
+        `Modalità clienti esistenti: ` +
+        `${existingMode === 'fill-missing'
+          ? 'completa campi mancanti'
+          : existingMode === 'overwrite'
+            ? 'aggiorna con Excel'
+            : 'ignora'}.` +
+        updateDetails +
+        `\n\nVuoi procedere?` +
+        formatImportProblems([...invalidRows, ...duplicateRows])
+      );
+
+      if (!confirmed) {
+        toast('Importazione annullata.');
+        return;
+      }
+
+      if (!state.session) {
+        let created = 0;
+        let updated = 0;
+
+        newRows.forEach((row) => {
+          state.customers.push({
+            id: `${Date.now()}-${Math.random()}`,
+            name: row.name,
+            email: row.email,
+            pec: row.pec,
+            phone: row.phone,
+            reminders_paused: false
+          });
+
+          created += 1;
+        });
+
+        existingRows.forEach((row) => {
+          const update = customerImportUpdate(
+            row.customer,
+            row,
+            existingMode
+          );
+
+          if (!Object.keys(update).length) {
+            return;
+          }
+
+          Object.assign(row.customer, update);
+          updated += 1;
+        });
+
+        updateCustomerOptions();
+        renderCustomers();
+
+        setTimeout(() => {
+          showImportSummary(
+            `${created} clienti creati in locale. ` +
+            `${updated} clienti aggiornati. ` +
+            `${existingRows.length - updated} clienti esistenti ignorati. ` +
+            `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati.`
+          );
+        }, 0);
+
+        return;
+      }
+
+      if (!state.organization) {
+        toast(
+          'Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.'
+        );
+        return;
+      }
+
+      let created = 0;
+      let updated = 0;
+      let failed = 0;
+
+      for (const row of newRows) {
+        const { data, error } = await state.supabase
+          .from('customers')
+          .insert({
+            organization_id: state.organization.id,
+            name: row.name,
+            email: row.email,
+            pec: row.pec,
+            phone: row.phone
+          })
+          .select()
+          .single();
+
+        if (error || !data) {
+          console.error('Errore creazione cliente durante importazione:', error);
+          failed += 1;
+          continue;
+        }
+
+        state.customers.push(data);
+        created += 1;
+      }
+
+      for (const row of existingRows) {
         const update = customerImportUpdate(
           row.customer,
           row,
@@ -2019,338 +2110,274 @@ const confirmed = window.confirm(
         );
 
         if (!Object.keys(update).length) {
-          return;
+          continue;
         }
 
-        Object.assign(row.customer, update);
+        const { data, error } = await state.supabase
+          .from('customers')
+          .update(update)
+          .eq('id', row.customer.id)
+          .select()
+          .single();
+
+        if (error || !data) {
+          console.error(
+            'Errore aggiornamento cliente durante importazione:',
+            error
+          );
+          failed += 1;
+          continue;
+        }
+
+        const customerIndex = state.customers.findIndex(
+          (customer) => String(customer.id) === String(data.id)
+        );
+
+        if (customerIndex !== -1) {
+          state.customers[customerIndex] = data;
+        }
+
         updated += 1;
-      });
+      }
 
       updateCustomerOptions();
       renderCustomers();
 
       setTimeout(() => {
         showImportSummary(
-          `${created} clienti creati in locale. ` +
+          `${created} clienti creati nel cloud. ` +
           `${updated} clienti aggiornati. ` +
           `${existingRows.length - updated} clienti esistenti ignorati. ` +
-          `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati.`
+          `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati` +
+          `${failed ? `. ${failed} operazioni non salvate` : ''}.`
         );
       }, 0);
-
-      return;
-    }
-
-    if (!state.organization) {
+    } catch (error) {
+      console.error('Errore importazione clienti:', error);
       toast(
-        'Organizzazione cloud non disponibile. Riprova dopo avere effettuato l’accesso.'
+        'Impossibile leggere o importare il file. Verifica formato e intestazioni.'
       );
-      return;
     }
-
-    let created = 0;
-    let updated = 0;
-    let failed = 0;
-
-    for (const row of newRows) {
-      const { data, error } = await state.supabase
-        .from('customers')
-        .insert({
-          organization_id: state.organization.id,
-          name: row.name,
-          email: row.email,
-          pec: row.pec,
-          phone: row.phone
-        })
-        .select()
-        .single();
-
-      if (error || !data) {
-        console.error('Errore creazione cliente durante importazione:', error);
-        failed += 1;
-        continue;
-      }
-
-      state.customers.push(data);
-      created += 1;
-    }
-
-    for (const row of existingRows) {
-      const update = customerImportUpdate(
-        row.customer,
-        row,
-        existingMode
-      );
-
-      if (!Object.keys(update).length) {
-        continue;
-      }
-
-      const { data, error } = await state.supabase
-        .from('customers')
-        .update(update)
-        .eq('id', row.customer.id)
-        .select()
-        .single();
-
-      if (error || !data) {
-        console.error(
-          'Errore aggiornamento cliente durante importazione:',
-          error
-        );
-        failed += 1;
-        continue;
-      }
-
-      const customerIndex = state.customers.findIndex(
-        (customer) => String(customer.id) === String(data.id)
-      );
-
-      if (customerIndex !== -1) {
-        state.customers[customerIndex] = data;
-      }
-
-      updated += 1;
-    }
-
-    updateCustomerOptions();
-    renderCustomers();
-
-    setTimeout(() => {
-      showImportSummary(
-        `${created} clienti creati nel cloud. ` +
-        `${updated} clienti aggiornati. ` +
-        `${existingRows.length - updated} clienti esistenti ignorati. ` +
-        `${duplicateRows.length} ripetuti e ${invalidRows.length} righe non valide ignorati` +
-        `${failed ? `. ${failed} operazioni non salvate` : ''}.`
-      );
-    }, 0);
-  } catch (error) {
-    console.error('Errore importazione clienti:', error);
-    toast(
-      'Impossibile leggere o importare il file. Verifica formato e intestazioni.'
-    );
-  }
-}
-
-function duplicateGroupKey(invoice) {
-  const customerName = String(
-    invoice.customer_name || invoice.customer || ''
-  )
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
-  const invoiceNumber = String(
-    invoice.invoice_number || invoice.number || ''
-  )
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
-  const dueDate = String(
-    invoice.due_date || invoice.due || ''
-  ).trim();
-
-  if (!customerName || !invoiceNumber || !dueDate) {
-    return null;
   }
 
-  return `${customerName}::${invoiceNumber}::${dueDate}`;
-}
+  function duplicateGroupKey(invoice) {
+    const customerName = String(
+      invoice.customer_name || invoice.customer || ''
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
 
-function detectDuplicateInvoices() {
-  const source = state.session
-    ? state.invoices
-    : state.localInvoices.map(localToView);
+    const invoiceNumber = String(
+      invoice.invoice_number || invoice.number || ''
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
 
-  const groups = new Map();
+    const dueDate = String(
+      invoice.due_date || invoice.due || ''
+    ).trim();
 
-  source.forEach((invoice) => {
-    const key = duplicateGroupKey(invoice);
-
-    if (!key) return;
-
-    if (!groups.has(key)) {
-      groups.set(key, []);
+    if (!customerName || !invoiceNumber || !dueDate) {
+      return null;
     }
 
-    groups.get(key).push(invoice);
-  });
+    return `${customerName}::${invoiceNumber}::${dueDate}`;
+  }
 
-  const duplicates = [...groups.values()]
-    .filter((invoices) => invoices.length > 1)
-    .sort((firstGroup, secondGroup) => {
-      const firstName = String(
-        firstGroup[0].customer_name || firstGroup[0].customer || ''
-      );
+  function detectDuplicateInvoices() {
+    const source = state.session
+      ? state.invoices
+      : state.localInvoices.map(localToView);
 
-      const secondName = String(
-        secondGroup[0].customer_name || secondGroup[0].customer || ''
-      );
+    const groups = new Map();
 
-      return firstName.localeCompare(secondName, 'it');
+    source.forEach((invoice) => {
+      const key = duplicateGroupKey(invoice);
+
+      if (!key) return;
+
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+
+      groups.get(key).push(invoice);
     });
 
-  if (!duplicates.length) {
-    toast('Controllo duplicati completato: nessuna fattura duplicata trovata.');
-    return;
-  }
+    const duplicates = [...groups.values()]
+      .filter((invoices) => invoices.length > 1)
+      .sort((firstGroup, secondGroup) => {
+        const firstName = String(
+          firstGroup[0].customer_name || firstGroup[0].customer || ''
+        );
 
-  const invoicesInvolved = duplicates.reduce(
-    (total, group) => total + group.length,
-    0
-  );
+        const secondName = String(
+          secondGroup[0].customer_name || secondGroup[0].customer || ''
+        );
 
-  const details = duplicates
-    .slice(0, 12)
-    .map((group) => {
-      const first = group[0];
-      const customer = first.customer_name || first.customer || 'Cliente';
-      const number = first.invoice_number || first.number || 'Senza numero';
-      const dueDate = first.due_date || first.due || '—';
-      const amount =
-        first.amount_cents !== undefined
-          ? moneyFromCents(first.amount_cents)
-          : money(first.amount);
+        return firstName.localeCompare(secondName, 'it');
+      });
 
-      return (
-        `• ${customer} · fattura ${number} · scadenza ${dateIt(dueDate)} · ${amount}\n` +
-        `  ${group.length} record con gli stessi dati`
-      );
-    })
-    .join('\n\n');
+    if (!duplicates.length) {
+      toast('Controllo duplicati completato: nessuna fattura duplicata trovata.');
+      return;
+    }
 
-  const moreGroups =
-    duplicates.length > 12
-      ? `\n\n…e altri ${duplicates.length - 12} gruppi duplicati.`
-      : '';
+    const invoicesInvolved = duplicates.reduce(
+      (total, group) => total + group.length,
+      0
+    );
 
-  window.alert(
-    `Controllo duplicati completato\n\n` +
+    const details = duplicates
+      .slice(0, 12)
+      .map((group) => {
+        const first = group[0];
+        const customer = first.customer_name || first.customer || 'Cliente';
+        const number = first.invoice_number || first.number || 'Senza numero';
+        const dueDate = first.due_date || first.due || '—';
+        const amount =
+          first.amount_cents !== undefined
+            ? moneyFromCents(first.amount_cents)
+            : money(first.amount);
+
+        return (
+          `• ${customer} · fattura ${number} · scadenza ${dateIt(dueDate)} · ${amount}\n` +
+          `  ${group.length} record con gli stessi dati`
+        );
+      })
+      .join('\n\n');
+
+    const moreGroups =
+      duplicates.length > 12
+        ? `\n\n…e altri ${duplicates.length - 12} gruppi duplicati.`
+        : '';
+
+    window.alert(
+      `Controllo duplicati completato\n\n` +
       `Gruppi duplicati trovati: ${duplicates.length}\n` +
       `Fatture coinvolte: ${invoicesInvolved}\n\n` +
       `${details}${moreGroups}\n\n` +
       `Nessuna fattura è stata modificata o eliminata.`
-  );
-}
-
-function escapeWithBreaks(value) {
-  return escapeHtml(value).replace(/\n/g, '<br>');
-}
-
-function reminderLabel(templateKey) {
-  return {
-    courtesy: 'Promemoria cortese',
-    first: 'Primo sollecito',
-    second: 'Secondo sollecito',
-    custom: 'Modello personalizzato'
-  }[templateKey] || templateKey || 'Modello non indicato';
-}
-
-function reminderStatusLabel(status) {
-  return {
-    draft: 'Testo copiato',
-    scheduled: 'Programmato',
-    sent: 'Email aperta',
-    failed: 'Non riuscito',
-    cancelled: 'Annullato'
-  }[status] || status || '—';
-}
-
-function channelLabel(channel) {
-  return {
-    manual: 'Copia manuale',
-    email: 'Email precompilata',
-    whatsapp: 'WhatsApp'
-  }[channel] || channel || '—';
-}
-
-function dateTimeIt(value) {
-  if (!value) return '—';
-
-  return new Intl.DateTimeFormat('it-IT', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(new Date(value));
-}
-
-async function openHistory(invoice) {
-  if (!state.session || invoice.source !== 'cloud') {
-    toast('Lo storico è disponibile per le scadenze salvate nel cloud.');
-    return;
+    );
   }
 
-  $('historyTitle').textContent =
-    `Storico attività — ${invoice.customer_name || 'Cliente'}`;
+  function escapeWithBreaks(value) {
+    return escapeHtml(value).replace(/\n/g, '<br>');
+  }
 
-  $('historySubtitle').textContent =
-    `Fattura ${invoice.invoice_number || 'senza numero'} · ${moneyFromCents(invoice.amount_cents)}`;
+  function reminderLabel(templateKey) {
+    return {
+      courtesy: 'Promemoria cortese',
+      first: 'Primo sollecito',
+      second: 'Secondo sollecito',
+      custom: 'Modello personalizzato'
+    }[templateKey] || templateKey || 'Modello non indicato';
+  }
 
-  $('historyContent').innerHTML =
-    '<div class="empty">Caricamento storico…</div>';
+  function reminderStatusLabel(status) {
+    return {
+      draft: 'Testo copiato',
+      scheduled: 'Programmato',
+      sent: 'Email aperta',
+      failed: 'Non riuscito',
+      cancelled: 'Annullato'
+    }[status] || status || '—';
+  }
 
-  $('historyBack').style.display = 'flex';
+  function channelLabel(channel) {
+    return {
+      manual: 'Copia manuale',
+      email: 'Email precompilata',
+      whatsapp: 'WhatsApp'
+    }[channel] || channel || '—';
+  }
 
-  const [
-    { data: reminders, error: remindersError },
-    { data: activities, error: activitiesError }
-  ] = await Promise.all([
-    state.supabase
-      .from('reminders')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-      .order('created_at', { ascending: false }),
+  function dateTimeIt(value) {
+    if (!value) return '—';
 
-    state.supabase
-      .from('invoice_activity_log')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-      .order('created_at', { ascending: false })
-  ]);
+    return new Intl.DateTimeFormat('it-IT', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(new Date(value));
+  }
 
-  if (remindersError || activitiesError) {
-    const message = remindersError?.message || activitiesError?.message;
+  async function openHistory(invoice) {
+    if (!state.session || invoice.source !== 'cloud') {
+      toast('Lo storico è disponibile per le scadenze salvate nel cloud.');
+      return;
+    }
+
+    $('historyTitle').textContent =
+      `Storico attività — ${invoice.customer_name || 'Cliente'}`;
+
+    $('historySubtitle').textContent =
+      `Fattura ${invoice.invoice_number || 'senza numero'} · ${moneyFromCents(invoice.amount_cents)}`;
 
     $('historyContent').innerHTML =
-      `<div class="empty">Impossibile caricare lo storico: ${escapeHtml(message)}</div>`;
+      '<div class="empty">Caricamento storico…</div>';
 
-    return;
-  }
+    $('historyBack').style.display = 'flex';
 
-  const reminderEvents = (reminders || []).map((reminder) => ({
-    type: 'reminder',
-    created_at: reminder.created_at,
-    reminder
-  }));
+    const [
+      { data: reminders, error: remindersError },
+      { data: activities, error: activitiesError }
+    ] = await Promise.all([
+      state.supabase
+        .from('reminders')
+        .select('*')
+        .eq('invoice_id', invoice.id)
+        .order('created_at', { ascending: false }),
 
-  const activityEvents = (activities || []).map((activity) => ({
-    type: 'activity',
-    created_at: activity.created_at,
-    activity
-  }));
+      state.supabase
+        .from('invoice_activity_log')
+        .select('*')
+        .eq('invoice_id', invoice.id)
+        .order('created_at', { ascending: false })
+    ]);
 
-  const events = [...reminderEvents, ...activityEvents]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (remindersError || activitiesError) {
+      const message = remindersError?.message || activitiesError?.message;
 
-  if (!events.length) {
-    $('historyContent').innerHTML =
-      '<div class="empty">Nessuna attività registrata per questa fattura.</div>';
+      $('historyContent').innerHTML =
+        `<div class="empty">Impossibile caricare lo storico: ${escapeHtml(message)}</div>`;
 
-    return;
-  }
+      return;
+    }
 
-  $('historyContent').innerHTML = `
+    const reminderEvents = (reminders || []).map((reminder) => ({
+      type: 'reminder',
+      created_at: reminder.created_at,
+      reminder
+    }));
+
+    const activityEvents = (activities || []).map((activity) => ({
+      type: 'activity',
+      created_at: activity.created_at,
+      activity
+    }));
+
+    const events = [...reminderEvents, ...activityEvents]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (!events.length) {
+      $('historyContent').innerHTML =
+        '<div class="empty">Nessuna attività registrata per questa fattura.</div>';
+
+      return;
+    }
+
+    $('historyContent').innerHTML = `
     <p class="history-count">
       ${events.length} ${events.length === 1 ? 'attività registrata' : 'attività registrate'}
     </p>
 
     <div class="history-list">
       ${events.map((event) => {
-        if (event.type === 'reminder') {
-          const reminder = event.reminder;
+      if (event.type === 'reminder') {
+        const reminder = event.reminder;
 
-          return `
+        return `
             <article class="history-item">
               <div class="history-item-head">
                 <strong>${escapeHtml(reminderLabel(reminder.template_key))}</strong>
@@ -2364,8 +2391,8 @@ async function openHistory(invoice) {
                 ${dateTimeIt(reminder.created_at)}
                 · ${escapeHtml(channelLabel(reminder.channel))}
                 ${reminder.recipient_email
-                  ? ` · ${escapeHtml(reminder.recipient_email)}`
-                  : ''}
+            ? ` · ${escapeHtml(reminder.recipient_email)}`
+            : ''}
               </p>
 
               <details>
@@ -2378,37 +2405,37 @@ async function openHistory(invoice) {
               </details>
             </article>
           `;
+      }
+
+      const activity = event.activity;
+
+      const activityBadge = {
+        reminder_scheduled: {
+          label: 'Bozza proposta',
+          className: 'due'
+        },
+        reminder_cancelled: {
+          label: 'Annullata',
+          className: 'paused'
+        },
+        reminder_approved: {
+          label: 'Approvata',
+          className: 'paid'
+        },
+        invoice_status_changed: {
+          label: 'Stato aggiornato',
+          className: 'upcoming'
+        },
+        payment_promise_created: {
+          label: 'Promessa pagamento',
+          className: 'due'
         }
+      }[activity.event_type] || {
+        label: 'Attività',
+        className: 'upcoming'
+      };
 
-        const activity = event.activity;
-
-const activityBadge = {
-  reminder_scheduled: {
-    label: 'Bozza proposta',
-    className: 'due'
-  },
-  reminder_cancelled: {
-    label: 'Annullata',
-    className: 'paused'
-  },
-  reminder_approved: {
-    label: 'Approvata',
-    className: 'paid'
-  },
-  invoice_status_changed: {
-    label: 'Stato aggiornato',
-    className: 'upcoming'
-  },
-  payment_promise_created: {
-    label: 'Promessa pagamento',
-    className: 'due'
-  }
-}[activity.event_type] || {
-  label: 'Attività',
-  className: 'upcoming'
-};
-
-return `
+      return `
   <article class="history-item">
     <div class="history-item-head">
       <strong>${escapeHtml(activity.message)}</strong>
@@ -2422,60 +2449,61 @@ return `
       ${dateTimeIt(activity.created_at)}
     </p>
   </article>
-`;      }).join('')}
+`;
+    }).join('')}
     </div>
   `;
-}
-
-function closeHistory() {
-  $('historyBack').style.display = 'none';
-}
-  function customerInvoices(customerId) {
-  return state.invoices.filter((invoice) => invoice.customer_id === customerId);
-}
-
-function customerMetrics(customer) {
-  const invoices = customerInvoices(customer.id);
-  let openCents = 0;
-  let overdueCents = 0;
-  let openCount = 0;
-
-  invoices.forEach((invoice) => {
-    const status = invoiceStatus(invoice);
-    const cents = Number(invoice.amount_cents || 0);
-    if (!['paid', 'disputed', 'paused'].includes(status)) {
-      openCents += cents;
-      openCount += 1;
-      if (status === 'overdue') overdueCents += cents;
-    }
-  });
-
-  return { invoices, openCents, overdueCents, openCount };
-}
-
-function renderCustomers() {
-  const query = ($('customerSearch').value || '').trim().toLowerCase();
-  const customers = state.customers
-    .filter((customer) => {
-      const text = `${customer.name || ''} ${customer.email || ''} ${customer.pec || ''}`.toLowerCase();
-      return !query || text.includes(query);
-    })
-    .sort((a, b) => {
-      const aMetrics = customerMetrics(a);
-      const bMetrics = customerMetrics(b);
-      return bMetrics.overdueCents - aMetrics.overdueCents || a.name.localeCompare(b.name);
-    });
-
-  if (!customers.length) {
-    $('customersContent').innerHTML = '<div class="customer-empty">Nessun cliente trovato. Aggiungine uno oppure crea una fattura con un nuovo cliente.</div>';
-    return;
   }
 
-  $('customersContent').innerHTML = `
+  function closeHistory() {
+    $('historyBack').style.display = 'none';
+  }
+  function customerInvoices(customerId) {
+    return state.invoices.filter((invoice) => invoice.customer_id === customerId);
+  }
+
+  function customerMetrics(customer) {
+    const invoices = customerInvoices(customer.id);
+    let openCents = 0;
+    let overdueCents = 0;
+    let openCount = 0;
+
+    invoices.forEach((invoice) => {
+      const status = invoiceStatus(invoice);
+      const cents = Number(invoice.amount_cents || 0);
+      if (!['paid', 'disputed', 'paused'].includes(status)) {
+        openCents += cents;
+        openCount += 1;
+        if (status === 'overdue') overdueCents += cents;
+      }
+    });
+
+    return { invoices, openCents, overdueCents, openCount };
+  }
+
+  function renderCustomers() {
+    const query = ($('customerSearch').value || '').trim().toLowerCase();
+    const customers = state.customers
+      .filter((customer) => {
+        const text = `${customer.name || ''} ${customer.email || ''} ${customer.pec || ''}`.toLowerCase();
+        return !query || text.includes(query);
+      })
+      .sort((a, b) => {
+        const aMetrics = customerMetrics(a);
+        const bMetrics = customerMetrics(b);
+        return bMetrics.overdueCents - aMetrics.overdueCents || a.name.localeCompare(b.name);
+      });
+
+    if (!customers.length) {
+      $('customersContent').innerHTML = '<div class="customer-empty">Nessun cliente trovato. Aggiungine uno oppure crea una fattura con un nuovo cliente.</div>';
+      return;
+    }
+
+    $('customersContent').innerHTML = `
     <div class="customer-list">
       ${customers.map((customer) => {
-        const metrics = customerMetrics(customer);
-        return `
+      const metrics = customerMetrics(customer);
+      return `
           <article class="customer-row">
             <div>
               <strong>${escapeHtml(customer.name)}</strong>
@@ -2486,297 +2514,342 @@ function renderCustomers() {
             <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
             <div class="customer-actions"><button type="button" class="small secondary" data-customer-op="edit" data-customer-id="${customer.id}">Apri</button></div>
           </article>`;
-      }).join('')}
+    }).join('')}
     </div>`;
-}
-
-function openCustomers() {
-  if (!state.session) {
-    toast('Accedi al cloud per gestire l’anagrafica clienti.');
-    return;
-  }
-  $('customerSearch').value = '';
-  $('customersBack').style.display = 'flex';
-  renderCustomers();
-}
-
-function openGuide() {
-  $('guideBack').style.display = 'flex';
-}
-
-function closeGuide() {
-  $('guideBack').style.display = 'none';
-}
-
-function openPlans() {
-  $('plansBack').style.display = 'flex';
-}
-
-function closePlans() {
-  $('plansBack').style.display = 'none';
-}
-
-function closeCustomers() {
-  $('customersBack').style.display = 'none';
-}
-
-function renderCustomerInvoices(customer) {
-  const invoices = customerInvoices(customer.id).sort((a, b) => b.due_date.localeCompare(a.due_date));
-  if (!invoices.length) {
-    $('customerInvoices').innerHTML = '<div class="customer-empty">Nessuna fattura registrata per questo cliente.</div>';
-    return;
   }
 
-  $('customerInvoices').innerHTML = `
+  function renderStudio() {
+    const query = ($('studioSearch').value || '').trim().toLowerCase();
+
+    const clients = state.customers
+      .filter((client) => {
+        const text = `${client.name || ''} ${client.email || ''} ${client.pec || ''}`.toLowerCase();
+        return !query || text.includes(query);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (!clients.length) {
+      $('studioClientsContent').innerHTML = '<p>Nessun cliente trovato nello studio.</p>';
+      return;
+    }
+
+    $('studioClientsContent').innerHTML = `
+    <div class="customer-list">
+      ${clients.map((client) => {
+      const metrics = customerMetrics(client);
+      return `
+          <article class="customer-row">
+            <div>
+              <strong>${escapeHtml(client.name)}</strong>
+              <small>${escapeHtml(client.email || client.pec || client.phone || 'Nessun contatto registrato')}</small>
+              ${client.reminders_paused ? '<small style="color:#b45309;font-weight:700">Solleciti automatici sospesi</small>' : ''}
+            </div>
+            <div class="customer-metric"><span>Da incassare</span><b>${moneyFromCents(metrics.openCents)}</b></div>
+            <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
+            <div class="customer-actions">
+              <button type="button" class="small secondary" data-studio-client-op="open" data-studio-client-id="${client.id}">Apri</button>
+            </div>
+          </article>`;
+    }).join('')}
+    </div>`;
+  }
+
+  function openCustomers() {
+    if (!state.session) {
+      toast('Accedi al cloud per gestire l’anagrafica clienti.');
+      return;
+    }
+    $('customerSearch').value = '';
+    $('customersBack').style.display = 'flex';
+    renderCustomers();
+  }
+
+  function openGuide() {
+    $('guideBack').style.display = 'flex';
+  }
+
+  function openStudio() {
+    $('studioBack').style.display = 'flex';
+    renderStudio();
+  }
+
+  function closeStudio() {
+    $('studioBack').style.display = 'none';
+  }
+
+  function closeGuide() {
+    $('guideBack').style.display = 'none';
+  }
+
+  function openPlans() {
+    $('plansBack').style.display = 'flex';
+  }
+
+  function closePlans() {
+    $('plansBack').style.display = 'none';
+  }
+
+  function closeCustomers() {
+    $('customersBack').style.display = 'none';
+  }
+
+  function renderCustomerInvoices(customer) {
+    const invoices = customerInvoices(customer.id).sort((a, b) => b.due_date.localeCompare(a.due_date));
+    if (!invoices.length) {
+      $('customerInvoices').innerHTML = '<div class="customer-empty">Nessuna fattura registrata per questo cliente.</div>';
+      return;
+    }
+
+    $('customerInvoices').innerHTML = `
     <div class="customer-invoice-list">
       ${invoices.map((invoice) => {
-        const status = invoiceStatus(invoice);
-        return `
+      const status = invoiceStatus(invoice);
+      return `
           <div class="customer-invoice">
             <div><strong>${escapeHtml(invoice.invoice_number || 'Senza numero')}</strong><small>Scadenza ${dateIt(invoice.due_date)}</small></div>
             <div style="text-align:right"><strong>${moneyFromCents(invoice.amount_cents)}</strong><br><span class="badge ${status}">${statusLabel(status)}</span></div>
           </div>`;
-      }).join('')}
+    }).join('')}
     </div>`;
-}
+  }
 
-function openCustomerEditor(customer) {
-  state.activeCustomer = customer || null;
-  const isNew = !customer;
-  const metrics = customer ? customerMetrics(customer) : { openCents: 0, overdueCents: 0, openCount: 0 };
+  function openCustomerEditor(customer) {
+    state.activeCustomer = customer || null;
+    const isNew = !customer;
+    const metrics = customer ? customerMetrics(customer) : { openCents: 0, overdueCents: 0, openCount: 0 };
 
-  $('customerEditTitle').textContent = isNew ? 'Nuovo cliente' : customer.name;
-  $('customerEditSubtitle').textContent = isNew ? 'Compila almeno nome e, se disponibile, email.' : 'Modifica i dati e le preferenze di sollecito.';
-  $('editCustomerName').value = customer?.name || '';
-  $('editCustomerEmail').value = customer?.email || '';
-  $('editCustomerPec').value = customer?.pec || '';
-  $('editCustomerPhone').value = customer?.phone || '';
-  $('editCustomerNotes').value = customer?.notes || '';
-  $('editCustomerPaused').checked = Boolean(customer?.reminders_paused);
+    $('customerEditTitle').textContent = isNew ? 'Nuovo cliente' : customer.name;
+    $('customerEditSubtitle').textContent = isNew ? 'Compila almeno nome e, se disponibile, email.' : 'Modifica i dati e le preferenze di sollecito.';
+    $('editCustomerName').value = customer?.name || '';
+    $('editCustomerEmail').value = customer?.email || '';
+    $('editCustomerPec').value = customer?.pec || '';
+    $('editCustomerPhone').value = customer?.phone || '';
+    $('editCustomerNotes').value = customer?.notes || '';
+    $('editCustomerPaused').checked = Boolean(customer?.reminders_paused);
 
-  $('customerSummary').innerHTML = isNew ? '' : `
+    $('customerSummary').innerHTML = isNew ? '' : `
     <div><span>Da incassare</span><b>${moneyFromCents(metrics.openCents)}</b></div>
     <div><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
     <div><span>Fatture aperte</span><b>${metrics.openCount}</b></div>`;
 
-  renderCustomerInvoices(customer || { id: '__new__' });
-  $('customerEditBack').style.display = 'flex';
-}
-
-function closeCustomerEditor() {
-  state.activeCustomer = null;
-  $('customerEditBack').style.display = 'none';
-}
-
-async function saveCustomer() {
-  if (!state.session || !state.organization) {
-    toast('Accedi al cloud prima di salvare un cliente.');
-    return;
+    renderCustomerInvoices(customer || { id: '__new__' });
+    $('customerEditBack').style.display = 'flex';
   }
 
-  const name = $('editCustomerName').value.trim();
-  const email = $('editCustomerEmail').value.trim();
-  const pec = $('editCustomerPec').value.trim();
-  const phone = $('editCustomerPhone').value.trim();
-  const notes = $('editCustomerNotes').value.trim();
-  const remindersPaused = $('editCustomerPaused').checked;
-
-  if (!name) {
-    toast('Inserisci il nome del cliente.');
-    $('editCustomerName').focus();
-    return;
+  function closeCustomerEditor() {
+    state.activeCustomer = null;
+    $('customerEditBack').style.display = 'none';
   }
 
-  const payload = {
-    name,
-    email: email || null,
-    pec: pec || null,
-    phone: phone || null,
-    notes: notes || null,
-    reminders_paused: remindersPaused
-  };
-
-  if (state.activeCustomer) {
-    const { error } = await state.supabase
-      .from('customers')
-      .update(payload)
-      .eq('id', state.activeCustomer.id);
-
-    if (error) {
-      toast(`Errore salvataggio cliente: ${error.message}`);
+  async function saveCustomer() {
+    if (!state.session || !state.organization) {
+      toast('Accedi al cloud prima di salvare un cliente.');
       return;
     }
 
-    toast('Cliente aggiornato.');
-  } else {
-    const { error } = await state.supabase
-      .from('customers')
-      .insert({ ...payload, organization_id: state.organization.id });
+    const name = $('editCustomerName').value.trim();
+    const email = $('editCustomerEmail').value.trim();
+    const pec = $('editCustomerPec').value.trim();
+    const phone = $('editCustomerPhone').value.trim();
+    const notes = $('editCustomerNotes').value.trim();
+    const remindersPaused = $('editCustomerPaused').checked;
 
-    if (error) {
-      toast(`Errore creazione cliente: ${error.message}`);
+    if (!name) {
+      toast('Inserisci il nome del cliente.');
+      $('editCustomerName').focus();
       return;
     }
 
-    toast('Cliente creato.');
-  }
+    const payload = {
+      name,
+      email: email || null,
+      pec: pec || null,
+      phone: phone || null,
+      notes: notes || null,
+      reminders_paused: remindersPaused
+    };
 
-  closeCustomerEditor();
-  await loadCloudData();
-  if ($('customersBack').style.display === 'flex') renderCustomers();
-}
+    if (state.activeCustomer) {
+      const { error } = await state.supabase
+        .from('customers')
+        .update(payload)
+        .eq('id', state.activeCustomer.id);
+
+      if (error) {
+        toast(`Errore salvataggio cliente: ${error.message}`);
+        return;
+      }
+
+      toast('Cliente aggiornato.');
+    } else {
+      const { error } = await state.supabase
+        .from('customers')
+        .insert({ ...payload, organization_id: state.organization.id });
+
+      if (error) {
+        toast(`Errore creazione cliente: ${error.message}`);
+        return;
+      }
+
+      toast('Cliente creato.');
+    }
+
+    closeCustomerEditor();
+    await loadCloudData();
+    if ($('customersBack').style.display === 'flex') renderCustomers();
+  }
 
   function scheduledReminderLabel(templateKey) {
-  return {
-    courtesy: 'Promemoria cortese',
-    first: 'Primo sollecito',
-    second: 'Secondo sollecito'
-  }[templateKey] || templateKey;
-}
-function getPriorityInfo(invoice) {
-  const status = invoiceStatus(invoice);
-  const days = diffDays(invoice);
-if (status === 'paid') {
-  return null;
-}
-  const firstDays = Number(
-    state.reminderSettings?.first_reminder_after_days || 3
-  );
-
-  const secondDays = Number(
-    state.reminderSettings?.second_reminder_after_days || 15
-  );
-
-  if (status === 'disputed' || status === 'paused') {
     return {
-      type: 'blocked',
-      label: status === 'disputed' ? 'Contestata' : 'Sospesa',
-      detail: 'Solleciti automatici bloccati.',
-      priority: 1
-    };
+      courtesy: 'Promemoria cortese',
+      first: 'Primo sollecito',
+      second: 'Secondo sollecito'
+    }[templateKey] || templateKey;
   }
+  function getPriorityInfo(invoice) {
+    const status = invoiceStatus(invoice);
+    const days = diffDays(invoice);
+    if (status === 'paid') {
+      return null;
+    }
+    const firstDays = Number(
+      state.reminderSettings?.first_reminder_after_days || 3
+    );
 
-  if (
-    status === 'promised' &&
-    invoice.promised_payment_date &&
-    invoice.promised_payment_date >= today()
-  ) {
-    return {
-      type: 'promise',
-      label: 'Promessa pagamento',
-      detail: `Previsto il ${dateIt(invoice.promised_payment_date)}.`,
-      priority: 2
-    };
+    const secondDays = Number(
+      state.reminderSettings?.second_reminder_after_days || 15
+    );
+
+    if (status === 'disputed' || status === 'paused') {
+      return {
+        type: 'blocked',
+        label: status === 'disputed' ? 'Contestata' : 'Sospesa',
+        detail: 'Solleciti automatici bloccati.',
+        priority: 1
+      };
+    }
+
+    if (
+      status === 'promised' &&
+      invoice.promised_payment_date &&
+      invoice.promised_payment_date >= today()
+    ) {
+      return {
+        type: 'promise',
+        label: 'Promessa pagamento',
+        detail: `Previsto il ${dateIt(invoice.promised_payment_date)}.`,
+        priority: 2
+      };
+    }
+
+    if (days >= secondDays) {
+      return {
+        type: 'critical',
+        label: 'Critica',
+        detail: `Scaduta da ${days} giorni: secondo sollecito previsto.`,
+        priority: 5
+      };
+    }
+
+    if (days >= firstDays) {
+      return {
+        type: 'high',
+        label: 'Da sollecitare',
+        detail: `Scaduta da ${days} giorni: primo sollecito previsto.`,
+        priority: 4
+      };
+    }
+
+    if (status === 'overdue') {
+      return {
+        type: 'high',
+        label: 'In ritardo',
+        detail: `Scaduta da ${days} giorni: sotto la soglia del primo sollecito.`,
+        priority: 3
+      };
+    }
+
+    return null;
   }
-
-  if (days >= secondDays) {
-    return {
-      type: 'critical',
-      label: 'Critica',
-      detail: `Scaduta da ${days} giorni: secondo sollecito previsto.`,
-      priority: 5
-    };
-  }
-
-  if (days >= firstDays) {
-    return {
-      type: 'high',
-      label: 'Da sollecitare',
-      detail: `Scaduta da ${days} giorni: primo sollecito previsto.`,
-      priority: 4
-    };
-  }
-
-  if (status === 'overdue') {
-    return {
-      type: 'high',
-      label: 'In ritardo',
-      detail: `Scaduta da ${days} giorni: sotto la soglia del primo sollecito.`,
-      priority: 3
-    };
-  }
-
-  return null;
-}
   function hasScheduledReminder(invoice) {
-  return state.scheduledReminders.some(
-    (reminder) => String(reminder.invoice_id) === String(invoice.id)
-  );
-}
+    return state.scheduledReminders.some(
+      (reminder) => String(reminder.invoice_id) === String(invoice.id)
+    );
+  }
   function renderPriorityDashboard() {
-  const content = $('priorityContent');
-  const summary = $('prioritySummary');
+    const content = $('priorityContent');
+    const summary = $('prioritySummary');
 
-  if (!content || !summary) {
-    return;
-  }
+    if (!content || !summary) {
+      return;
+    }
 
-  const source = state.session
-    ? state.invoices
-    : state.localInvoices.map(localToView);
+    const source = state.session
+      ? state.invoices
+      : state.localInvoices.map(localToView);
 
-  const priorities = source
-    .map((invoice) => ({
-      invoice,
-      info: getPriorityInfo(invoice)
-    }))
-    .filter((item) => item.info)
-    .sort((a, b) => {
-      if (b.info.priority !== a.info.priority) {
-        return b.info.priority - a.info.priority;
-      }
+    const priorities = source
+      .map((invoice) => ({
+        invoice,
+        info: getPriorityInfo(invoice)
+      }))
+      .filter((item) => item.info)
+      .sort((a, b) => {
+        if (b.info.priority !== a.info.priority) {
+          return b.info.priority - a.info.priority;
+        }
 
-      const aDays = diffDays(a.invoice);
-      const bDays = diffDays(b.invoice);
+        const aDays = diffDays(a.invoice);
+        const bDays = diffDays(b.invoice);
 
-      if (bDays !== aDays) {
-        return bDays - aDays;
-      }
+        if (bDays !== aDays) {
+          return bDays - aDays;
+        }
 
-      const aAmount = a.invoice.amount_cents !== undefined
-        ? Number(a.invoice.amount_cents)
-        : Math.round(Number(a.invoice.amount || 0) * 100);
+        const aAmount = a.invoice.amount_cents !== undefined
+          ? Number(a.invoice.amount_cents)
+          : Math.round(Number(a.invoice.amount || 0) * 100);
 
-      const bAmount = b.invoice.amount_cents !== undefined
-        ? Number(b.invoice.amount_cents)
-        : Math.round(Number(b.invoice.amount || 0) * 100);
+        const bAmount = b.invoice.amount_cents !== undefined
+          ? Number(b.invoice.amount_cents)
+          : Math.round(Number(b.invoice.amount || 0) * 100);
 
-      return bAmount - aAmount;
-    })
-    .slice(0, 5);
+        return bAmount - aAmount;
+      })
+      .slice(0, 5);
 
-  if (!priorities.length) {
-    summary.textContent = 'Nessuna urgenza';
-    content.innerHTML =
-      '<div class="empty">Nessuna fattura richiede attenzione immediata.</div>';
-    return;
-  }
+    if (!priorities.length) {
+      summary.textContent = 'Nessuna urgenza';
+      content.innerHTML =
+        '<div class="empty">Nessuna fattura richiede attenzione immediata.</div>';
+      return;
+    }
 
-  const criticalCount = priorities.filter(
-    (item) => item.info.type === 'critical'
-  ).length;
+    const criticalCount = priorities.filter(
+      (item) => item.info.type === 'critical'
+    ).length;
 
-  const highCount = priorities.filter(
-    (item) => item.info.type === 'high'
-  ).length;
+    const highCount = priorities.filter(
+      (item) => item.info.type === 'high'
+    ).length;
 
-  summary.textContent = criticalCount
-    ? `${criticalCount} critica${criticalCount === 1 ? '' : 'he'}`
-    : highCount
-      ? `${highCount} da sollecitare`
-      : `${priorities.length} da monitorare`;
+    summary.textContent = criticalCount
+      ? `${criticalCount} critica${criticalCount === 1 ? '' : 'he'}`
+      : highCount
+        ? `${highCount} da sollecitare`
+        : `${priorities.length} da monitorare`;
 
-  content.innerHTML = `
+    content.innerHTML = `
     <div class="priority-list">
       ${priorities.map(({ invoice, info }) => {
-        const amount = invoice.amount_cents !== undefined
-          ? moneyFromCents(invoice.amount_cents)
-          : money(invoice.amount);
+      const amount = invoice.amount_cents !== undefined
+        ? moneyFromCents(invoice.amount_cents)
+        : money(invoice.amount);
 
-        const customer = invoice.customer_name || invoice.customer || 'Cliente';
-        const number = invoice.invoice_number || invoice.number || 'Senza numero';
+      const customer = invoice.customer_name || invoice.customer || 'Cliente';
+      const number = invoice.invoice_number || invoice.number || 'Senza numero';
 
-        return `
+      return `
           <article class="priority-item ${info.type}">
             <div class="priority-main">
               <strong>${escapeHtml(customer)}</strong>
@@ -2785,12 +2858,12 @@ if (status === 'paid') {
 
             <div>
               <span class="badge ${info.type === 'critical'
-                ? 'overdue'
-                : info.type === 'high'
-                  ? 'due'
-                  : info.type === 'promise'
-                    ? 'promised'
-                    : 'disputed'}">
+          ? 'overdue'
+          : info.type === 'high'
+            ? 'due'
+            : info.type === 'promise'
+              ? 'promised'
+              : 'disputed'}">
                 ${escapeHtml(info.label)}
               </span>
 
@@ -2805,324 +2878,319 @@ if (status === 'paid') {
 
             <div class="priority-action">
   ${(() => {
-    const hasDraft = hasScheduledReminder(invoice);
-    if (info.type === 'critical' || info.type === 'high') {
-      return hasDraft
-        ? `<button type="button" class="small violet" data-priority-op="draft" data-priority-id="${invoice.id}">Apri bozza</button>`
-        : `<button type="button" class="small violet" data-priority-op="remind" data-priority-id="${invoice.id}">Sollecito</button>`;
-    }
-    return `<button type="button" class="small secondary" data-priority-op="status" data-priority-id="${invoice.id}">Apri stato</button>`;
-  })()}
+          const hasDraft = hasScheduledReminder(invoice);
+          if (info.type === 'critical' || info.type === 'high') {
+            return hasDraft
+              ? `<button type="button" class="small violet" data-priority-op="draft" data-priority-id="${invoice.id}">Apri bozza</button>`
+              : `<button type="button" class="small violet" data-priority-op="remind" data-priority-id="${invoice.id}">Sollecito</button>`;
+          }
+          return `<button type="button" class="small secondary" data-priority-op="status" data-priority-id="${invoice.id}">Apri stato</button>`;
+        })()}
 </div>
           </article>
         `;
-      }).join('')}
+    }).join('')}
     </div>
   `;
-}
-function suggestedAutomaticModel(invoice) {
-  const days = diffDays(invoice);
-  const firstDays = Number(state.reminderSettings?.first_reminder_after_days || 3);
-  const secondDays = Number(state.reminderSettings?.second_reminder_after_days || 15);
+  }
+  function suggestedAutomaticModel(invoice) {
+    const days = diffDays(invoice);
+    const firstDays = Number(state.reminderSettings?.first_reminder_after_days || 3);
+    const secondDays = Number(state.reminderSettings?.second_reminder_after_days || 15);
 
-  if (days >= secondDays) return 'second';
-  if (days >= firstDays) return 'first';
-  return null;
-}
+    if (days >= secondDays) return 'second';
+    if (days >= firstDays) return 'first';
+    return null;
+  }
 
-function buildScheduledReminder(invoice, templateKey) {
-  return {
-    invoice_id: invoice.id,
-    template_key: templateKey,
-    channel: 'email',
-    status: 'scheduled',
-    scheduled_at: new Date().toISOString(),
-    subject_snapshot: fillTemplate(models[templateKey].subject, invoice),
-    body_snapshot: fillTemplate(models[templateKey].body, invoice),
-    recipient_email: invoice.customer_email || null,
-    created_by: state.session.user.id
-  };
-}
+  function buildScheduledReminder(invoice, templateKey) {
+    return {
+      invoice_id: invoice.id,
+      template_key: templateKey,
+      channel: 'email',
+      status: 'scheduled',
+      scheduled_at: new Date().toISOString(),
+      subject_snapshot: fillTemplate(models[templateKey].subject, invoice),
+      body_snapshot: fillTemplate(models[templateKey].body, invoice),
+      recipient_email: invoice.customer_email || null,
+      created_by: state.session.user.id
+    };
+  }
 
-async function loadScheduledReminders() {
-  if (!state.session || !state.organization) {
-    state.scheduledReminders = [];
+  async function loadScheduledReminders() {
+    if (!state.session || !state.organization) {
+      state.scheduledReminders = [];
+      updateApprovalBadge();
+      renderPriorityDashboard();
+      return;
+    }
+
+    const invoiceIds = state.invoices.map((invoice) => invoice.id);
+
+    if (!invoiceIds.length) {
+      state.scheduledReminders = [];
+      updateApprovalBadge();
+      renderPriorityDashboard();
+      return;
+    }
+
+    const { data, error } = await state.supabase
+      .from('reminders')
+      .select('*')
+      .in('invoice_id', invoiceIds)
+      .eq('status', 'scheduled')
+      .order('scheduled_at', { ascending: true });
+
+    if (error) {
+      console.error('Errore caricamento bozze:', error.message);
+      state.scheduledReminders = [];
+    } else {
+      state.scheduledReminders = data || [];
+    }
+
     updateApprovalBadge();
     renderPriorityDashboard();
-    return;
   }
 
-  const invoiceIds = state.invoices.map((invoice) => invoice.id);
-
-if (!invoiceIds.length) {
-  state.scheduledReminders = [];
-  updateApprovalBadge();
-  renderPriorityDashboard();
-  return;
-}
-
-  const { data, error } = await state.supabase
-    .from('reminders')
-    .select('*')
-    .in('invoice_id', invoiceIds)
-    .eq('status', 'scheduled')
-    .order('scheduled_at', { ascending: true });
-
-  if (error) {
-    console.error('Errore caricamento bozze:', error.message);
-    state.scheduledReminders = [];
-  } else {
-    state.scheduledReminders = data || [];
+  function updateApprovalBadge() {
+    const count = $('approvalCount');
+    if (!count) return;
+    count.textContent = state.scheduledReminders.length;
+    count.style.display = state.scheduledReminders.length ? 'inline-grid' : 'none';
   }
+  async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) {
+    if (!state.supabase || !state.session || !state.organization || !invoiceId) {
+      return;
+    }
 
-  updateApprovalBadge();
-renderPriorityDashboard();
-}
+    const { error } = await state.supabase
+      .from('invoice_activity_log')
+      .insert({
+        organization_id: state.organization.id,
+        invoice_id: invoiceId,
+        actor_user_id: state.session.user.id,
+        event_type: eventType,
+        message,
+        metadata
+      });
 
-function updateApprovalBadge() {
-  const count = $('approvalCount');
-  if (!count) return;
-  count.textContent = state.scheduledReminders.length;
-  count.style.display = state.scheduledReminders.length ? 'inline-grid' : 'none';
-}
-async function logInvoiceActivity(invoiceId, eventType, message, metadata = {}) {
-  if (!state.supabase || !state.session || !state.organization || !invoiceId) {
-    return;
+    if (error) {
+      console.error('Errore registrazione storico attività:', error.message);
+    }
   }
-
-  const { error } = await state.supabase
-    .from('invoice_activity_log')
-    .insert({
-      organization_id: state.organization.id,
-      invoice_id: invoiceId,
-      actor_user_id: state.session.user.id,
-      event_type: eventType,
-      message,
-      metadata
-    });
-
-  if (error) {
-    console.error('Errore registrazione storico attività:', error.message);
-  }
-}
   async function generateScheduledReminders() {
-  if (!state.session || !state.organization) return;
+    if (!state.session || !state.organization) return;
 
-  const invoiceIds = state.invoices.map((invoice) => invoice.id);
+    const invoiceIds = state.invoices.map((invoice) => invoice.id);
 
-  if (!invoiceIds.length) return;
-
-  /*
-    Carichiamo lo storico completo dei reminder delle fatture visibili.
-    Non basta guardare solo le bozze scheduled:
-    un reminder già sent, draft o cancelled deve bloccare la ricreazione
-    dello stesso modello.
-  */
-  const { data: allReminders, error } = await state.supabase
-    .from('reminders')
-    .select('invoice_id, template_key, status')
-    .in('invoice_id', invoiceIds);
-
-  if (error) {
-    console.error('Errore verifica storico reminder:', error.message);
-    return;
-  }
-
-  /*
-    Chiave esempio: "uuid-fattura:first".
-    Se esiste qualsiasi reminder storico per quel modello, non creiamo
-    una nuova bozza automatica.
-  */
-  const alreadyHandled = new Set(
-  allReminders
-    .filter((reminder) => reminder.status !== 'cancelled')
-    .map(
-      (reminder) => `${reminder.invoice_id}:${reminder.template_key}`
-    )
-);
-
-  const candidates = state.invoices
-    .filter((invoice) => isEligibleForAutomaticReminder(invoice))
-    .map((invoice) => ({
-      invoice,
-      templateKey: suggestedAutomaticModel(invoice)
-    }))
-    .filter(
-      (item) =>
-        item.templateKey &&
-        !alreadyHandled.has(`${item.invoice.id}:${item.templateKey}`)
-    );
-
-  if (!candidates.length) return;
-
-  for (const candidate of candidates) {
-    const payload = buildScheduledReminder(
-      candidate.invoice,
-      candidate.templateKey
-    );
-
-    const { error: insertError } = await state.supabase
-      .from('reminders')
-      .insert(payload);
+    if (!invoiceIds.length) return;
 
     /*
-      23505 = un'altra sessione ha creato la stessa bozza nel frattempo.
-      Non è un errore da mostrare all'utente.
+      Carichiamo lo storico completo dei reminder delle fatture visibili.
+      Non basta guardare solo le bozze scheduled:
+      un reminder già sent, draft o cancelled deve bloccare la ricreazione
+      dello stesso modello.
     */
-    if (insertError && insertError.code !== '23505') {
-      console.error('Errore creazione bozza:', insertError.message);
-    }
-    if (!insertError) {
-  const templateLabel = candidate.templateKey === 'second'
-    ? 'Secondo sollecito'
-    : 'Primo sollecito';
+    const { data: allReminders, error } = await state.supabase
+      .from('reminders')
+      .select('invoice_id, template_key, status')
+      .in('invoice_id', invoiceIds);
 
-  await logInvoiceActivity(
-    candidate.invoice.id,
-    'reminder_scheduled',
-    `${templateLabel} proposto automaticamente e inserito nella coda di approvazione.`,
-    {
-      reminder_template_key: candidate.templateKey,
-      first_reminder_after_days: state.reminderSettings.first_reminder_after_days,
-      second_reminder_after_days: state.reminderSettings.second_reminder_after_days
-    }
-  );
-}
-  }
-
-  await loadScheduledReminders();
-}
-
-async function openApprovalQueue() {
-  if (!state.session) {
-    toast('Accedi al cloud per visualizzare i solleciti da approvare.');
-    return;
-  }
-
-  await loadScheduledReminders();
-  $('approvalBack').style.display = 'flex';
-  renderApprovalQueue();
-}
-
-function closeApprovalQueue() {
-  $('approvalBack').style.display = 'none';
-}
-
-function openAnalytics() {
-  if (!state.session) {
-    toast('Accedi al cloud per visualizzare l’analisi incassi.');
-    return;
-  }
-
-  $('analyticsBack').style.display = 'flex';
-  renderAnalytics();
-}
-
-function closeAnalytics() {
-  $('analyticsBack').style.display = 'none';
-}  
-function renderAnalytics() {
-  const invoices = state.session
-    ? state.invoices
-    : state.localInvoices.map(localToView);
-
-  const overdueInvoices = invoices.filter(
-    (invoice) => invoiceStatus(invoice) === 'overdue'
-  );
-
-  let overdueCents = 0;
-
-  const aging = {
-    from0to30: { cents: 0, count: 0 },
-    from31to60: { cents: 0, count: 0 },
-    from61to90: { cents: 0, count: 0 },
-    over90: { cents: 0, count: 0 }
-  };
-
-  const debtors = new Map();
-
-  overdueInvoices.forEach((invoice) => {
-    const cents = invoice.amount_cents !== undefined
-      ? Number(invoice.amount_cents || 0)
-      : Math.round(Number(invoice.amount || 0) * 100);
-
-    const days = diffDays(invoice);
-    const customer = invoice.customer_name || invoice.customer || 'Cliente';
-
-    overdueCents += cents;
-
-    if (days <= 30) {
-      aging.from0to30.cents += cents;
-      aging.from0to30.count += 1;
-    } else if (days <= 60) {
-      aging.from31to60.cents += cents;
-      aging.from31to60.count += 1;
-    } else if (days <= 90) {
-      aging.from61to90.cents += cents;
-      aging.from61to90.count += 1;
-    } else {
-      aging.over90.cents += cents;
-      aging.over90.count += 1;
+    if (error) {
+      console.error('Errore verifica storico reminder:', error.message);
+      return;
     }
 
-    const current = debtors.get(customer) || {
-      name: customer,
-      cents: 0,
-      count: 0,
-      oldestDays: 0
+    /*
+      Chiave esempio: "uuid-fattura:first".
+      Se esiste qualsiasi reminder storico per quel modello, non creiamo
+      una nuova bozza automatica.
+    */
+    const alreadyHandled = new Set(
+      allReminders
+        .filter((reminder) => reminder.status !== 'cancelled')
+        .map(
+          (reminder) => `${reminder.invoice_id}:${reminder.template_key}`
+        )
+    );
+
+    const candidates = state.invoices
+      .filter((invoice) => isEligibleForAutomaticReminder(invoice))
+      .map((invoice) => ({
+        invoice,
+        templateKey: suggestedAutomaticModel(invoice)
+      }))
+      .filter(
+        (item) =>
+          item.templateKey &&
+          !alreadyHandled.has(`${item.invoice.id}:${item.templateKey}`)
+      );
+
+    if (!candidates.length) return;
+
+    for (const candidate of candidates) {
+      const payload = buildScheduledReminder(
+        candidate.invoice,
+        candidate.templateKey
+      );
+
+      const { error: insertError } = await state.supabase
+        .from('reminders')
+        .insert(payload);
+
+      /*
+        23505 = un'altra sessione ha creato la stessa bozza nel frattempo.
+        Non è un errore da mostrare all'utente.
+      */
+      if (insertError && insertError.code !== '23505') {
+        console.error('Errore creazione bozza:', insertError.message);
+      }
+      if (!insertError) {
+        const templateLabel = candidate.templateKey === 'second'
+          ? 'Secondo sollecito'
+          : 'Primo sollecito';
+
+        await logInvoiceActivity(
+          candidate.invoice.id,
+          'reminder_scheduled',
+          `${templateLabel} proposto automaticamente e inserito nella coda di approvazione.`,
+          {
+            reminder_template_key: candidate.templateKey,
+            first_reminder_after_days: state.reminderSettings.first_reminder_after_days,
+            second_reminder_after_days: state.reminderSettings.second_reminder_after_days
+          }
+        );
+      }
+    }
+
+    await loadScheduledReminders();
+  }
+
+  async function openApprovalQueue() {
+    if (!state.session) {
+      toast('Accedi al cloud per visualizzare i solleciti da approvare.');
+      return;
+    }
+
+    await loadScheduledReminders();
+    $('approvalBack').style.display = 'flex';
+    renderApprovalQueue();
+  }
+
+  function closeApprovalQueue() {
+    $('approvalBack').style.display = 'none';
+  }
+
+  function openAnalytics() {
+    if (!state.session) {
+      toast('Accedi al cloud per visualizzare l’analisi incassi.');
+      return;
+    }
+
+    $('analyticsBack').style.display = 'flex';
+    renderAnalytics();
+  }
+
+  function closeAnalytics() {
+    $('analyticsBack').style.display = 'none';
+  }
+  function renderAnalytics() {
+    const invoices = state.session
+      ? state.invoices
+      : state.localInvoices.map(localToView);
+
+    const overdueInvoices = invoices.filter(
+      (invoice) => invoiceStatus(invoice) === 'overdue'
+    );
+
+    let overdueCents = 0;
+
+    const aging = {
+      from0to30: { cents: 0, count: 0 },
+      from31to60: { cents: 0, count: 0 },
+      from61to90: { cents: 0, count: 0 },
+      over90: { cents: 0, count: 0 }
     };
 
-    current.cents += cents;
-    current.count += 1;
-    current.oldestDays = Math.max(current.oldestDays, days);
+    const debtors = new Map();
 
-    debtors.set(customer, current);
-  });
+    overdueInvoices.forEach((invoice) => {
+      const cents = invoice.amount_cents !== undefined
+        ? Number(invoice.amount_cents || 0)
+        : Math.round(Number(invoice.amount || 0) * 100);
 
-  $('analyticsOverdueTotal').textContent = moneyFromCents(overdueCents);
+      const days = diffDays(invoice);
+      const customer = invoice.customer_name || invoice.customer || 'Cliente';
 
-  $('analyticsOverdueCount').textContent =
-    `${overdueInvoices.length} fattur${
-      overdueInvoices.length === 1 ? 'a scaduta' : 'e scadute'
-    }`;
+      overdueCents += cents;
 
-  $('aging0to30').textContent = moneyFromCents(aging.from0to30.cents);
-  $('aging0to30Count').textContent =
-    `${aging.from0to30.count} fattur${
-      aging.from0to30.count === 1 ? 'a' : 'e'
-    }`;
+      if (days <= 30) {
+        aging.from0to30.cents += cents;
+        aging.from0to30.count += 1;
+      } else if (days <= 60) {
+        aging.from31to60.cents += cents;
+        aging.from31to60.count += 1;
+      } else if (days <= 90) {
+        aging.from61to90.cents += cents;
+        aging.from61to90.count += 1;
+      } else {
+        aging.over90.cents += cents;
+        aging.over90.count += 1;
+      }
 
-  $('aging31to60').textContent = moneyFromCents(aging.from31to60.cents);
-  $('aging31to60Count').textContent =
-    `${aging.from31to60.count} fattur${
-      aging.from31to60.count === 1 ? 'a' : 'e'
-    }`;
+      const current = debtors.get(customer) || {
+        name: customer,
+        cents: 0,
+        count: 0,
+        oldestDays: 0
+      };
 
-  $('aging61to90').textContent = moneyFromCents(aging.from61to90.cents);
-  $('aging61to90Count').textContent =
-    `${aging.from61to90.count} fattur${
-      aging.from61to90.count === 1 ? 'a' : 'e'
-    }`;
+      current.cents += cents;
+      current.count += 1;
+      current.oldestDays = Math.max(current.oldestDays, days);
 
-  $('agingOver90').textContent = moneyFromCents(aging.over90.cents);
-  $('agingOver90Count').textContent =
-    `${aging.over90.count} fattur${
-      aging.over90.count === 1 ? 'a' : 'e'
-    }`;
+      debtors.set(customer, current);
+    });
 
-  const topDebtors = [...debtors.values()]
-    .sort((a, b) => b.cents - a.cents)
-    .slice(0, 10);
+    $('analyticsOverdueTotal').textContent = moneyFromCents(overdueCents);
 
-  if (!topDebtors.length) {
-    $('topDebtorsContent').innerHTML = `
+    $('analyticsOverdueCount').textContent =
+      `${overdueInvoices.length} fattur${overdueInvoices.length === 1 ? 'a scaduta' : 'e scadute'
+      }`;
+
+    $('aging0to30').textContent = moneyFromCents(aging.from0to30.cents);
+    $('aging0to30Count').textContent =
+      `${aging.from0to30.count} fattur${aging.from0to30.count === 1 ? 'a' : 'e'
+      }`;
+
+    $('aging31to60').textContent = moneyFromCents(aging.from31to60.cents);
+    $('aging31to60Count').textContent =
+      `${aging.from31to60.count} fattur${aging.from31to60.count === 1 ? 'a' : 'e'
+      }`;
+
+    $('aging61to90').textContent = moneyFromCents(aging.from61to90.cents);
+    $('aging61to90Count').textContent =
+      `${aging.from61to90.count} fattur${aging.from61to90.count === 1 ? 'a' : 'e'
+      }`;
+
+    $('agingOver90').textContent = moneyFromCents(aging.over90.cents);
+    $('agingOver90Count').textContent =
+      `${aging.over90.count} fattur${aging.over90.count === 1 ? 'a' : 'e'
+      }`;
+
+    const topDebtors = [...debtors.values()]
+      .sort((a, b) => b.cents - a.cents)
+      .slice(0, 10);
+
+    if (!topDebtors.length) {
+      $('topDebtorsContent').innerHTML = `
       <div class="analytics-empty">
         Nessuna fattura scaduta al momento.
       </div>`;
-    return;
-  }
+      return;
+    }
 
-  $('topDebtorsContent').innerHTML = `
+    $('topDebtorsContent').innerHTML = `
     <div class="top-debtors-list">
       ${topDebtors.map((debtor, index) => `
         <article class="top-debtor-row">
@@ -3131,11 +3199,9 @@ function renderAnalytics() {
           <div class="top-debtor-main">
             <strong>${escapeHtml(debtor.name)}</strong>
             <small>
-              ${debtor.count} fattur${
-                debtor.count === 1 ? 'a' : 'e'
-              } scadut${
-                debtor.count === 1 ? 'a' : 'e'
-              } · fino a ${debtor.oldestDays} giorni di ritardo
+              ${debtor.count} fattur${debtor.count === 1 ? 'a' : 'e'
+      } scadut${debtor.count === 1 ? 'a' : 'e'
+      } · fino a ${debtor.oldestDays} giorni di ritardo
             </small>
           </div>
 
@@ -3145,30 +3211,30 @@ function renderAnalytics() {
         </article>
       `).join('')}
     </div>`;
-}
-
-function renderApprovalQueue() {
-  const reminders = state.scheduledReminders;
-  if (!reminders.length) {
-    $('approvalContent').innerHTML = '<div class="approval-empty">Nessun sollecito da approvare. Le fatture idonee e scadute compariranno qui come bozze.</div>';
-    return;
   }
 
-  $('approvalContent').innerHTML = `
+  function renderApprovalQueue() {
+    const reminders = state.scheduledReminders;
+    if (!reminders.length) {
+      $('approvalContent').innerHTML = '<div class="approval-empty">Nessun sollecito da approvare. Le fatture idonee e scadute compariranno qui come bozze.</div>';
+      return;
+    }
+
+    $('approvalContent').innerHTML = `
     <div class="approval-list">
       ${reminders.map((reminder) => {
-        const invoice = state.invoices.find(
-  (invoice) => invoice.id === reminder.invoice_id
-);
-        if (!invoice) {
-  return `
+      const invoice = state.invoices.find(
+        (invoice) => invoice.id === reminder.invoice_id
+      );
+      if (!invoice) {
+        return `
     <div class="empty">
       Fattura collegata non trovata per il sollecito.
     </div>
   `;
-}
-        const days = diffDays(invoice);
-        return `
+      }
+      const days = diffDays(invoice);
+      return `
           <article class="approval-item">
             <div class="approval-item-head">
               <div>
@@ -3207,78 +3273,20 @@ function renderApprovalQueue() {
   </button>
 </div>
           </article>`;
-      }).join('')}
+    }).join('')}
     </div>`;
-}
-
-async function cancelScheduledReminder(reminderId) {
-  const reminder = state.scheduledReminders.find(
-    (item) => String(item.id) === String(reminderId)
-  );
-
-  if (!reminder) {
-    toast('La bozza non è più disponibile.');
-    return;
   }
 
-  const { error } = await state.supabase
-    .from('reminders')
-    .update({ status: 'cancelled' })
-    .eq('id', reminder.id)
-    .eq('status', 'scheduled');
+  async function cancelScheduledReminder(reminderId) {
+    const reminder = state.scheduledReminders.find(
+      (item) => String(item.id) === String(reminderId)
+    );
 
-  if (error) {
-    toast(`Impossibile annullare la bozza: ${error.message}`);
-    return;
-  }
-
-  await logInvoiceActivity(
-    reminder.invoice_id,
-    'reminder_cancelled',
-    'Bozza di sollecito annullata dalla coda di approvazione.',
-    {
-      reminder_id: reminder.id,
-      reminder_template_key: reminder.template_key
+    if (!reminder) {
+      toast('La bozza non è più disponibile.');
+      return;
     }
-  );
 
-  await loadScheduledReminders();
-  renderApprovalQueue();
-  toast('Bozza annullata.');
-}
-function findInvoiceById(invoiceId) {
-  return state.invoices.find(
-    (invoice) => String(invoice.id) === String(invoiceId)
-  );
-}
-async function openScheduledReminder(reminderId) {
-  const reminder = state.scheduledReminders.find(
-    (item) => String(item.id) === String(reminderId)
-  );
-
-  if (!reminder) {
-    return;
-  }
-
-  const invoice = findInvoiceById(reminder.invoice_id);
-
-  if (!invoice) {
-    toast('La fattura associata a questa bozza non è disponibile.');
-    return;
-  }
-
-  const status = invoiceStatus(invoice);
-  const hasValidPromise =
-    status === 'promised' &&
-    invoice.promised_payment_date &&
-    invoice.promised_payment_date >= today();
-
-  if (
-    status === 'paid' ||
-    status === 'disputed' ||
-    status === 'paused' ||
-    hasValidPromise
-  ) {
     const { error } = await state.supabase
       .from('reminders')
       .update({ status: 'cancelled' })
@@ -3293,100 +3301,158 @@ async function openScheduledReminder(reminderId) {
     await logInvoiceActivity(
       reminder.invoice_id,
       'reminder_cancelled',
-      `Bozza annullata: fattura ora ${statusLabel(status)}.`,
+      'Bozza di sollecito annullata dalla coda di approvazione.',
       {
         reminder_id: reminder.id,
-        reminder_template_key: reminder.template_key,
-        cancellation_reason: status
+        reminder_template_key: reminder.template_key
       }
     );
 
     await loadScheduledReminders();
     renderApprovalQueue();
-
-    toast(
-      hasValidPromise
-        ? 'Bozza annullata: è presente una promessa di pagamento futura.'
-        : `Bozza annullata: fattura ${statusLabel(status).toLowerCase()}.`
+    toast('Bozza annullata.');
+  }
+  function findInvoiceById(invoiceId) {
+    return state.invoices.find(
+      (invoice) => String(invoice.id) === String(invoiceId)
+    );
+  }
+  async function openScheduledReminder(reminderId) {
+    const reminder = state.scheduledReminders.find(
+      (item) => String(item.id) === String(reminderId)
     );
 
-    return;
+    if (!reminder) {
+      return;
+    }
+
+    const invoice = findInvoiceById(reminder.invoice_id);
+
+    if (!invoice) {
+      toast('La fattura associata a questa bozza non è disponibile.');
+      return;
+    }
+
+    const status = invoiceStatus(invoice);
+    const hasValidPromise =
+      status === 'promised' &&
+      invoice.promised_payment_date &&
+      invoice.promised_payment_date >= today();
+
+    if (
+      status === 'paid' ||
+      status === 'disputed' ||
+      status === 'paused' ||
+      hasValidPromise
+    ) {
+      const { error } = await state.supabase
+        .from('reminders')
+        .update({ status: 'cancelled' })
+        .eq('id', reminder.id)
+        .eq('status', 'scheduled');
+
+      if (error) {
+        toast(`Impossibile annullare la bozza: ${error.message}`);
+        return;
+      }
+
+      await logInvoiceActivity(
+        reminder.invoice_id,
+        'reminder_cancelled',
+        `Bozza annullata: fattura ora ${statusLabel(status)}.`,
+        {
+          reminder_id: reminder.id,
+          reminder_template_key: reminder.template_key,
+          cancellation_reason: status
+        }
+      );
+
+      await loadScheduledReminders();
+      renderApprovalQueue();
+
+      toast(
+        hasValidPromise
+          ? 'Bozza annullata: è presente una promessa di pagamento futura.'
+          : `Bozza annullata: fattura ${statusLabel(status).toLowerCase()}.`
+      );
+
+      return;
+    }
+
+    state.activeScheduledReminder = reminder;
+    closeApprovalQueue();
+    openReminder(invoice, reminder.template_key);
+
+    $('mailSubject').value = reminder.subject_snapshot;
+    $('mailBody').value = reminder.body_snapshot;
   }
-
-  state.activeScheduledReminder = reminder;
-  closeApprovalQueue();
-  openReminder(invoice, reminder.template_key);
-
-  $('mailSubject').value = reminder.subject_snapshot;
-  $('mailBody').value = reminder.body_snapshot;
-}
   function openRules() {
-  if (!state.session || !state.organization) {
-    toast('Accedi al cloud per modificare le regole di sollecito.');
-    return;
+    if (!state.session || !state.organization) {
+      toast('Accedi al cloud per modificare le regole di sollecito.');
+      return;
+    }
+
+    $('rulesError').textContent = '';
+    $('rulesError').classList.remove('visible');
+    $('firstReminderDays').value = state.reminderSettings.first_reminder_after_days || 3;
+    $('secondReminderDays').value = state.reminderSettings.second_reminder_after_days || 15;
+    $('rulesBack').style.display = 'flex';
   }
 
-  $('rulesError').textContent = '';
-  $('rulesError').classList.remove('visible');
-  $('firstReminderDays').value = state.reminderSettings.first_reminder_after_days || 3;
-  $('secondReminderDays').value = state.reminderSettings.second_reminder_after_days || 15;
-  $('rulesBack').style.display = 'flex';
-}
-
-function closeRules() {
-  $('rulesBack').style.display = 'none';
-}
-
-function showRulesError(message) {
-  $('rulesError').textContent = message;
-  $('rulesError').classList.add('visible');
-}
-
-async function saveRules() {
-  if (!state.session || !state.organization) return;
-
-  const firstDays = Number($('firstReminderDays').value);
-  const secondDays = Number($('secondReminderDays').value);
-
-  if (!Number.isInteger(firstDays) || firstDays < 1 || firstDays > 60) {
-    showRulesError('Il primo sollecito deve essere un numero intero da 1 a 60 giorni.');
-    return;
+  function closeRules() {
+    $('rulesBack').style.display = 'none';
   }
 
-  if (!Number.isInteger(secondDays) || secondDays < 2 || secondDays > 120) {
-    showRulesError('Il secondo sollecito deve essere un numero intero da 2 a 120 giorni.');
-    return;
+  function showRulesError(message) {
+    $('rulesError').textContent = message;
+    $('rulesError').classList.add('visible');
   }
 
-  if (secondDays <= firstDays) {
-    showRulesError('Il secondo sollecito deve essere successivo al primo.');
-    return;
+  async function saveRules() {
+    if (!state.session || !state.organization) return;
+
+    const firstDays = Number($('firstReminderDays').value);
+    const secondDays = Number($('secondReminderDays').value);
+
+    if (!Number.isInteger(firstDays) || firstDays < 1 || firstDays > 60) {
+      showRulesError('Il primo sollecito deve essere un numero intero da 1 a 60 giorni.');
+      return;
+    }
+
+    if (!Number.isInteger(secondDays) || secondDays < 2 || secondDays > 120) {
+      showRulesError('Il secondo sollecito deve essere un numero intero da 2 a 120 giorni.');
+      return;
+    }
+
+    if (secondDays <= firstDays) {
+      showRulesError('Il secondo sollecito deve essere successivo al primo.');
+      return;
+    }
+
+    const payload = {
+      first_reminder_after_days: firstDays,
+      second_reminder_after_days: secondDays,
+      approval_required: true,
+      automatic_email_enabled: false
+    };
+
+    const { data, error } = await state.supabase
+      .from('organization_reminder_settings')
+      .update(payload)
+      .eq('organization_id', state.organization.id)
+      .select()
+      .single();
+
+    if (error) {
+      showRulesError(`Impossibile salvare le regole: ${error.message}`);
+      return;
+    }
+
+    state.reminderSettings = data;
+    closeRules();
+    await generateScheduledReminders();
+    toast('Regole sollecito salvate.');
   }
-
-  const payload = {
-    first_reminder_after_days: firstDays,
-    second_reminder_after_days: secondDays,
-    approval_required: true,
-    automatic_email_enabled: false
-  };
-
-  const { data, error } = await state.supabase
-    .from('organization_reminder_settings')
-    .update(payload)
-    .eq('organization_id', state.organization.id)
-    .select()
-    .single();
-
-  if (error) {
-    showRulesError(`Impossibile salvare le regole: ${error.message}`);
-    return;
-  }
-
-  state.reminderSettings = data;
-  closeRules();
-  await generateScheduledReminders();
-  toast('Regole sollecito salvate.');
-}
 
   function bindEvents() {
     $('addBtn').addEventListener('click', addInvoice);
@@ -3395,57 +3461,79 @@ async function saveRules() {
     $('analyticsBtn').addEventListener('click', openAnalytics);
     $('rulesBtn').addEventListener('click', openRules);
     $('guideBtn').addEventListener('click', openGuide);
+    $('studioBtn').addEventListener('click', openStudio);
     // Listener per il modal Piani (chiusura)
-$('closePlansBtn').addEventListener('click', closePlans);
-$('closePlansActionBtn').addEventListener('click', closePlans);
-$('plansBack').addEventListener('click', (event) => {
-  if (event.target === $('plansBack')) closePlans();
-});
-$('closeRulesBtn').addEventListener('click', closeRules);
-$('closeGuideBtn').addEventListener('click', closeGuide);
-$('closeGuideActionBtn').addEventListener('click', closeGuide);
-$('guideBack').addEventListener('click', (event) => {
-  if (event.target === $('guideBack')) closeGuide();
-});
-$('cancelRulesBtn').addEventListener('click', closeRules);
-$('saveRulesBtn').addEventListener('click', saveRules);
-$('rulesBack').addEventListener('click', (event) => {
-  if (event.target === $('rulesBack')) closeRules();
-});
+    $('studioSearch').addEventListener('input', renderStudio);
 
-$('closeCustomersBtn').addEventListener('click', closeCustomers);
+    $('studioClientsContent').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-studio-client-op]');
+      if (!button) return;
+
+      const client = state.customers.find((item) => item.id === button.dataset.studioClientId);
+      if (!client) return;
+
+      if (button.dataset.studioClientOp === 'open') {
+        // Per ora apriamo il modal Clienti esistente
+        openCustomers();
+        $('customerSearch').value = client.name;
+        renderCustomers();
+      }
+    });
+    $('closePlansBtn').addEventListener('click', closePlans);
+    $('closePlansActionBtn').addEventListener('click', closePlans);
+    $('plansBack').addEventListener('click', (event) => {
+      if (event.target === $('plansBack')) closePlans();
+    });
+    $('closeRulesBtn').addEventListener('click', closeRules);
+    $('closeGuideBtn').addEventListener('click', closeGuide);
+    $('closeStudioBtn').addEventListener('click', closeStudio);
+    $('closeStudioActionBtn').addEventListener('click', closeStudio);
+    $('studioBack').addEventListener('click', (event) => {
+      if (event.target === $('studioBack')) closeStudio();
+    });
+    $('closeGuideActionBtn').addEventListener('click', closeGuide);
+    $('guideBack').addEventListener('click', (event) => {
+      if (event.target === $('guideBack')) closeGuide();
+    });
+    $('cancelRulesBtn').addEventListener('click', closeRules);
+    $('saveRulesBtn').addEventListener('click', saveRules);
+    $('rulesBack').addEventListener('click', (event) => {
+      if (event.target === $('rulesBack')) closeRules();
+    });
+
+    $('closeCustomersBtn').addEventListener('click', closeCustomers);
     $('customersBackBtn').addEventListener('click', closeCustomers);
-$('customersBack').addEventListener('click', (event) => {
-  if (event.target === $('customersBack')) closeCustomers();
-});
-$('customerSearch').addEventListener('input', renderCustomers);
-$('newCustomerBtn').addEventListener('click', () => openCustomerEditor(null));
-$('importCustomersBtn').addEventListener('click', () => {
-  if (!state.session) {
-    toast('Accedi al cloud per importare clienti.');
-    return;
-  }
-  $('importCustomersFile').click();
-});
+    $('customersBack').addEventListener('click', (event) => {
+      if (event.target === $('customersBack')) closeCustomers();
+    });
+    $('customerSearch').addEventListener('input', renderCustomers);
+    $('newCustomerBtn').addEventListener('click', () => openCustomerEditor(null));
+    $('importCustomersBtn').addEventListener('click', () => {
+      if (!state.session) {
+        toast('Accedi al cloud per importare clienti.');
+        return;
+      }
+      $('importCustomersFile').click();
+    });
 
-$('importCustomersFile').addEventListener('change', async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  await importCustomersFile(file);
-  event.target.value = '';
-});
-$('customersContent').addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-customer-op]');
-  if (!button) return;
-  const customer = state.customers.find((item) => item.id === button.dataset.customerId);
-  if (customer && button.dataset.customerOp === 'edit') openCustomerEditor(customer);
-});
-$('closeCustomerEditBtn').addEventListener('click', closeCustomerEditor);
-$('cancelCustomerEditBtn').addEventListener('click', closeCustomerEditor);
-$('customerEditBack').addEventListener('click', (event) => {
-  if (event.target === $('customerEditBack')) closeCustomerEditor();
-});
-$('saveCustomerBtn').addEventListener('click', saveCustomer);
+    $('importCustomersFile').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      await importCustomersFile(file);
+      event.target.value = '';
+    });
+    $('customersContent').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-customer-op]');
+      if (!button) return;
+      const customer = state.customers.find((item) => item.id === button.dataset.customerId);
+      if (customer && button.dataset.customerOp === 'edit') openCustomerEditor(customer);
+    });
+    $('closeCustomerEditBtn').addEventListener('click', closeCustomerEditor);
+    $('cancelCustomerEditBtn').addEventListener('click', closeCustomerEditor);
+    $('customerEditBack').addEventListener('click', (event) => {
+      if (event.target === $('customerEditBack')) closeCustomerEditor();
+    });
+    $('saveCustomerBtn').addEventListener('click', saveCustomer);
 
     $('search').addEventListener('input', render);
     $('filter').addEventListener('change', render);
@@ -3456,36 +3544,36 @@ $('saveCustomerBtn').addEventListener('click', saveCustomer);
         $('email').value = customer.email || '';
       }
     });
-$('priorityContent').addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-priority-op]');
+    $('priorityContent').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-priority-op]');
 
-  if (!button) {
-    return;
-  }
+      if (!button) {
+        return;
+      }
 
-  const invoice = findInvoice(button.dataset.priorityId);
+      const invoice = findInvoice(button.dataset.priorityId);
 
-  if (!invoice) {
-    return;
-  }
+      if (!invoice) {
+        return;
+      }
 
-  if (button.dataset.priorityOp === 'remind') {
-    openReminder(invoice);
-  }
+      if (button.dataset.priorityOp === 'remind') {
+        openReminder(invoice);
+      }
 
-  if (button.dataset.priorityOp === 'draft') {
-    const reminder = state.scheduledReminders.find(
-      (item) => String(item.invoice_id) === String(invoice.id)
-    );
-    if (reminder) {
-      openScheduledReminder(reminder.id);
-    }
-  }
+      if (button.dataset.priorityOp === 'draft') {
+        const reminder = state.scheduledReminders.find(
+          (item) => String(item.invoice_id) === String(invoice.id)
+        );
+        if (reminder) {
+          openScheduledReminder(reminder.id);
+        }
+      }
 
-  if (button.dataset.priorityOp === 'status') {
-    openStatusModal(invoice);
-  }
-});
+      if (button.dataset.priorityOp === 'status') {
+        openStatusModal(invoice);
+      }
+    });
     $('tableWrap').addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-op]');
       if (!button) return;
@@ -3519,65 +3607,65 @@ $('priorityContent').addEventListener('click', (event) => {
     });
     $('closeHistoryBtn').addEventListener('click', closeHistory);
 
-$('historyBack').addEventListener('click', (event) => {
-  if (event.target === $('historyBack')) closeHistory();
-});
+    $('historyBack').addEventListener('click', (event) => {
+      if (event.target === $('historyBack')) closeHistory();
+    });
     $('closeStatusBtn').addEventListener('click', closeStatusModal);
 
-$('cancelStatusBtn').addEventListener('click', closeStatusModal);
+    $('cancelStatusBtn').addEventListener('click', closeStatusModal);
 
-$('saveStatusBtn').addEventListener('click', saveInvoiceStatus);
+    $('saveStatusBtn').addEventListener('click', saveInvoiceStatus);
 
-$('statusBack').addEventListener('click', (event) => {
-  if (event.target === $('statusBack')) closeStatusModal();
-});
+    $('statusBack').addEventListener('click', (event) => {
+      if (event.target === $('statusBack')) closeStatusModal();
+    });
 
-document.querySelectorAll('input[name="invoiceStatus"]').forEach((input) => {
-  input.addEventListener('change', () => {
-    $('promiseField').classList.toggle(
-      'visible',
-      input.value === 'promised' && input.checked
-    );
-  });
-});
+    document.querySelectorAll('input[name="invoiceStatus"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        $('promiseField').classList.toggle(
+          'visible',
+          input.value === 'promised' && input.checked
+        );
+      });
+    });
     $('copyBtn').addEventListener('click', copyReminder);
     $('emailBtn').addEventListener('click', openEmail);
 
     $('authBtn').addEventListener('click', openAuth);
     $('approvalBtn').addEventListener('click', openApprovalQueue);
-$('closeApprovalBtn').addEventListener('click', closeApprovalQueue);
-$('approvalBack').addEventListener('click', (event) => {
-  if (event.target === $('approvalBack')) closeApprovalQueue();
-});
-$('closeAnalyticsBtn').addEventListener('click', closeAnalytics);
-$('analyticsBack').addEventListener('click', (event) => {
-  if (event.target === $('analyticsBack')) closeAnalytics();
-});
-$('approvalContent').addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-approval-op]');
+    $('closeApprovalBtn').addEventListener('click', closeApprovalQueue);
+    $('approvalBack').addEventListener('click', (event) => {
+      if (event.target === $('approvalBack')) closeApprovalQueue();
+    });
+    $('closeAnalyticsBtn').addEventListener('click', closeAnalytics);
+    $('analyticsBack').addEventListener('click', (event) => {
+      if (event.target === $('analyticsBack')) closeAnalytics();
+    });
+    $('approvalContent').addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-approval-op]');
 
-  if (!button) {
-    return;
-  }
+      if (!button) {
+        return;
+      }
 
-  if (button.dataset.approvalOp === 'history') {
-    const invoice = findInvoice(button.dataset.invoiceId);
+      if (button.dataset.approvalOp === 'history') {
+        const invoice = findInvoice(button.dataset.invoiceId);
 
-    if (invoice) {
-      openHistory(invoice);
-    }
+        if (invoice) {
+          openHistory(invoice);
+        }
 
-    return;
-  }
+        return;
+      }
 
-  if (button.dataset.approvalOp === 'cancel') {
-    await cancelScheduledReminder(button.dataset.reminderId);
-  }
+      if (button.dataset.approvalOp === 'cancel') {
+        await cancelScheduledReminder(button.dataset.reminderId);
+      }
 
-  if (button.dataset.approvalOp === 'approve') {
-    openScheduledReminder(button.dataset.reminderId);
-  }
-});
+      if (button.dataset.approvalOp === 'approve') {
+        openScheduledReminder(button.dataset.reminderId);
+      }
+    });
     $('closeAuthBtn').addEventListener('click', closeAuth);
     $('authBack').addEventListener('click', (event) => {
       if (event.target === $('authBack')) closeAuth();
@@ -3611,16 +3699,21 @@ $('approvalContent').addEventListener('click', async (event) => {
   }
 
   start();
-$('closeImportSummaryBtn')?.addEventListener('click', closeImportSummary);
+  $('closeImportSummaryBtn')?.addEventListener('click', closeImportSummary);
 
-$('closeImportSummaryActionBtn')?.addEventListener(
-  'click',
-  closeImportSummary
-);
+  $('closeImportSummaryActionBtn')?.addEventListener(
+    'click',
+    closeImportSummary
+  );
 
-$('importSummaryBack')?.addEventListener('click', (event) => {
-  if (event.target === $('importSummaryBack')) {
-    closeImportSummary();
-  }
-});
+  $('importSummaryBack')?.addEventListener('click', (event) => {
+    if (event.target === $('importSummaryBack')) {
+      closeImportSummary();
+    }
+  });
+// Esporre funzioni globalmente per la console
+window.getOrganizationPlan = getOrganizationPlan;
+window.updateFeaturesByPlan = updateFeaturesByPlan;
+window.updateAccountUi = updateAccountUi;
+window.state = state;
 })();
