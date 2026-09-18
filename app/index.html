@@ -965,17 +965,33 @@
 
     <div class="guide-content" style="max-height:60vh;overflow-y:auto;padding:0 16px">
       <section class="guide-section">
-        <h3>Primi passi</h3>
-        <p>
-          IncassaPrima ti aiuta a tenere traccia delle fatture emesse e a gestire i solleciti di pagamento.
-          Per iniziare:
-        </p>
+  <h3>Piani: Free, Pro e Studio</h3>
+  <p>
+    IncassaPrima è disponibile in tre piani:
+  </p>
+  <ul>
+    <li>
+      <strong>Free:</strong> uso base gratuito, con fatture, clienti, solleciti e import/export.
+    </li>
+    <li>
+      <strong>Pro:</strong> funzioni avanzate per la gestione degli incassi, tra cui:
+      <ul>
+        <li>dashboard <strong>Analisi incassi</strong> con:</li>
         <ul>
-          <li>crea o importa i tuoi clienti nella sezione <strong>Clienti</strong>;</li>
-          <li>aggiungi le fatture manualmente oppure importale da Excel/CSV;</li>
-          <li>consulta la lista delle scadenze e usa i filtri per trovare rapidamente le fatture.</li>
+          <li>totale scaduto e numero di fatture in ritardo;</li>
+          <li>fasce di anzianità crediti (aging buckets): 0–30, 31–60, 61–90, oltre 90 giorni;</li>
+          <li>classifica dei principali debitori (top 10).</li>
         </ul>
-      </section>
+      </ul>
+    </li>
+    <li>
+      <strong>Studio:</strong> funzioni dedicate a commercialisti e studi, con gestione di più clienti associati e visione aggregata delle scadenze per cliente.
+    </li>
+  </ul>
+  <p class="hint">
+    I dettagli completi delle funzionalità per piano saranno visibili direttamente nell’app non appena disponibili.
+  </p>
+</section>
 
       <section class="guide-section">
         <h3>Clienti</h3>
@@ -1029,21 +1045,7 @@
         </p>
       </section>
 
-      <section class="guide-section">
-        <h3>Piani: Free, Pro e Studio</h3>
-        <p>
-          IncassaPrima è disponibile in tre piani:
-        </p>
-        <ul>
-          <li><strong>Free:</strong> uso base gratuito, con fatture, clienti, solleciti e import/export.</li>
-          <li><strong>Pro:</strong> funzioni avanzate per la gestione degli incassi e analisi più dettagliate.</li>
-          <li><strong>Studio:</strong> funzioni dedicate a commercialisti e studi, con gestione di più clienti associati.</li>
-        </ul>
-        <p class="hint">
-          I dettagli completi delle funzionalità per piano saranno visibili direttamente nell'app non appena disponibili.
-        </p>
-      </section>
-
+      
       <section class="guide-section">
         <h3>Dati e privacy</h3>
         <p>
@@ -1055,6 +1057,71 @@
 
     <div class="modalactions">
       <button type="button" id="closeGuideActionBtn">
+        Chiudi
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="plansBack" class="modalback">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="plansTitle"
+  >
+    <div class="modalhead">
+      <div>
+        <h2 id="plansTitle">Piani e funzionalità</h2>
+        <p class="hint">
+          Confronta Free, Pro e Studio e scegli il piano più adatto a te.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="closePlansBtn"
+        class="close"
+        aria-label="Chiudi piani"
+      >×</button>
+    </div>
+
+    <div class="plans-content" style="max-height:60vh;overflow-y:auto;padding:0 16px">
+      <section class="plan-section">
+        <h3>Free</h3>
+        <ul>
+          <li>gestione fatture e scadenze;</li>
+          <li>anagrafica clienti;</li>
+          <li>solleciti con approvazione manuale;</li>
+          <li>import/export CSV ed Excel.</li>
+        </ul>
+      </section>
+
+      <section class="plan-section">
+        <h3>Pro</h3>
+        <ul>
+          <li>tutte le funzionalità del piano Free;</li>
+          <li>dashboard <strong>Analisi incassi</strong> con:</li>
+          <ul>
+            <li>totale scaduto e fatture in ritardo;</li>
+            <li>fasce di anzianità crediti (0–30, 31–60, 61–90, oltre 90 giorni);</li>
+            <li>classifica dei principali debitori (top 10).</li>
+          </ul>
+        </ul>
+      </section>
+
+      <section class="plan-section">
+        <h3>Studio</h3>
+        <ul>
+          <li>tutte le funzionalità del piano Pro;</li>
+          <li>dashboard <strong>Commercialista / Studio</strong> per gestire più clienti associati;</li>
+          <li>visione aggregata delle scadenze per cliente.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="modalactions">
+      <button type="button" id="closePlansActionBtn">
         Chiudi
       </button>
     </div>

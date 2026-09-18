@@ -2508,6 +2508,14 @@ function closeGuide() {
   $('guideBack').style.display = 'none';
 }
 
+function openPlans() {
+  $('plansBack').style.display = 'flex';
+}
+
+function closePlans() {
+  $('plansBack').style.display = 'none';
+}
+
 function closeCustomers() {
   $('customersBack').style.display = 'none';
 }
@@ -3387,6 +3395,12 @@ async function saveRules() {
     $('analyticsBtn').addEventListener('click', openAnalytics);
     $('rulesBtn').addEventListener('click', openRules);
     $('guideBtn').addEventListener('click', openGuide);
+    // Listener per il modal Piani (chiusura)
+$('closePlansBtn').addEventListener('click', closePlans);
+$('closePlansActionBtn').addEventListener('click', closePlans);
+$('plansBack').addEventListener('click', (event) => {
+  if (event.target === $('plansBack')) closePlans();
+});
 $('closeRulesBtn').addEventListener('click', closeRules);
 $('closeGuideBtn').addEventListener('click', closeGuide);
 $('closeGuideActionBtn').addEventListener('click', closeGuide);
