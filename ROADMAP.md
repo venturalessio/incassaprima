@@ -17,13 +17,13 @@ sessioni di sviluppo.
   in seguito) e i commercialisti si registrino fin da subito come Studio.
   Se il caso si ripresenta, ripetere lo stesso intervento manuale finché
   non vale la pena costruire un flusso automatico di conversione.
-- **Vista aggregata Studio.** Oggi lo switcher elenca solo le aziende con
-  un pulsante "Apri"; manca un riepilogo aggregato (es. scaduto totale,
-  da incassare totale) su tutte le aziende insieme. La landing page lo
-  promette già nel copy ("visione aggregata delle scadenze per cliente").
+- ~~**Vista aggregata Studio.**~~ Fatto il 20/09/2026: lo switcher mostra
+  ora un riepilogo aggregato ("da incassare"/"scaduto" su tutte le
+  aziende insieme) più i due totali per ogni singola azienda.
 - **Copy marketing "Studio"** (`index.html`, `app/index.html`) da
   rivedere per riflettere esattamente cosa è disponibile oggi vs cosa non
-  lo è ancora (es. la vista aggregata sopra).
+  lo è ancora (la vista aggregata è ora reale, andrebbe verificato il
+  resto del copy).
 - **Blocco analytics/aging** in `app/app.js` (funzione intorno alle righe
   3100-3180) ancora inline nel render, non estratto in `app/lib/` — buon
   prossimo candidato per continuare il lavoro di modularizzazione/test
