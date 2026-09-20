@@ -900,8 +900,7 @@
       <div>
         <h2 id="rulesTitle">Regole sollecito</h2>
         <p class="hint">
-          Configura quando IncassaPrima prepara una bozza.
-          In questa fase nessuna email viene inviata automaticamente.
+          Configura dopo quanti giorni di ritardo IncassaPrima prepara una bozza di sollecito.
         </p>
       </div>
 
@@ -929,10 +928,15 @@
 
     <div id="rulesError" class="rule-error"></div>
 
-    <div class="locked-rule">
-      <strong>Approvazione umana: attiva</strong>
-      Le proposte entrano nella coda “Da approvare”.
-      L’invio automatico delle email è disattivato nella fase alpha.
+    <div class="field rule-box" style="margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+        <input id="automaticEmailEnabled" type="checkbox" style="width:auto">
+        Invia i solleciti automaticamente via email, senza approvarli uno per uno
+      </label>
+      <span>
+        Se disattivo (consigliato per ora): le proposte entrano nella coda “Da approvare”, e l’invio resta manuale tramite il tuo client email.
+        Se attivo: IncassaPrima genera e invia i solleciti da solo, ogni giorno. Richiede che l’invio email automatico sia configurato e attivato sul tuo account — contattaci prima di abilitarlo.
+      </span>
     </div>
 
     <div class="modalactions">

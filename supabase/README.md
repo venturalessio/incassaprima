@@ -97,6 +97,83 @@ isolata dalle altre esattamente come qualunque organizzazione Free/Pro
 all'organizzazione attiva in `state.organization`, non serve alcuna
 policy dedicata per la lettura/scrittura di clienti e fatture.
 
+- `20260920191843` — **bug corretto**: nessuna riga di
+  `organization_reminder_settings` veniva mai creata automaticamente
+  (né `handle_new_user()` né `create_managed_company()` ne inserivano
+  una), quindi `saveRules()` lato app — che fa un `UPDATE`, non un
+  upsert — non aveva mai avuto nessuna riga da aggiornare per
+  **nessuna** organizzazione esistente: le regole di sollecito non si
+  potevano davvero salvare. Aggiunto un trigger
+  `create_default_reminder_settings()` che crea la riga di default per
+  ogni nuova organizzazione, più il backfill delle organizzazioni già
+  esistenti. Lato app, `saveRules()` è stato aggiornato per usare
+  `upsert` invece di `update`, come difesa aggiuntiva.
+- `20260920192620` — pianifica (`pg_cron` + `pg_net`) l'esecuzione
+  giornaliera (06:00 UTC) della funzione Edge `send-reminder-emails`
+  (vedi sezione dedicata sotto).
+- `20260920193047` — revoca l'EXECUTE su `create_default_reminder_settings`
+  da `anon`/`authenticated` (per pulizia: essendo `returns trigger`,
+  Postgres rifiuta comunque di eseguirla fuori da un trigger, quindi non
+  è mai stata realmente invocabile via RPC).
+
+## Promemoria automatici via email
+
+`supabase/functions/send-reminder-emails/` contiene una funzione Edge
+pianificata (cron giornaliero alle 06:00 UTC, job
+`send-reminder-emails-daily`) che per ogni organizzazione:
+
+1. genera le bozze di sollecito mancanti con la stessa identica logica
+   di idoneità/modello usata lato client (`app/lib/reminders.js`,
+   `app/lib/templates.js` — mirrorati in `lib/` dentro la cartella della
+   funzione: **vanno tenuti sincronizzati manualmente**, non c'è build
+   step condiviso tra browser e Deno in questo progetto);
+2. se l'organizzazione ha `automatic_email_enabled = true` (impostabile
+   dalla UI "Regole sollecito"), invia davvero l'email tramite
+   [Resend](https://resend.com) invece di lasciare solo la bozza in coda
+   di approvazione, e registra l'esito in `invoice_activity_log`.
+
+**Autenticazione della funzione**: distribuita con `verify_jwt=false`
+(non viene chiamata da un browser autenticato, ma dal cron job) e
+protetta invece da un segreto condiviso: la funzione confronta l'header
+`x-cron-secret` con la propria variabile d'ambiente `CRON_SECRET`. Se
+`CRON_SECRET` non è impostata (default all'atto della creazione), la
+funzione rifiuta **ogni** richiesta con 401 — fail-closed, nessuna
+esecuzione accidentale senza configurazione esplicita.
+
+**Configurazione richiesta (manuale, non automatizzabile da qui)**: le
+Edge Function secrets non sono raggiungibili via SQL/MCP, vanno impostate
+dalla Dashboard Supabase (Project Settings → Edge Functions →
+`send-reminder-emails` → Secrets) o via CLI (`supabase secrets set`):
+
+- `CRON_SECRET` — **obbligatorio** perché il cron job funzioni. Deve
+  avere lo stesso valore usato nell'header `x-cron-secret` della
+  migrazione `20260920192620` (generato con `gen_random_uuid()` al
+  momento dell'applicazione, volutamente non versionato in chiaro nel
+  repository — vedi il commento nel file di quella migrazione). Se il
+  valore va recuperato di nuovo, va letto da
+  `cron.job where jobname = 'send-reminder-emails-daily'` sul progetto
+  reale (mai da questo repository).
+- `RESEND_API_KEY` — opzionale. Se assente, la funzione genera comunque
+  le bozze ma non invia email automaticamente per nessuna
+  organizzazione (ogni tentativo di invio automatico viene registrato
+  come `reminders.status = 'failed'` con
+  `error_message = 'Invio automatico non configurato...'`): sicuro da
+  lasciare non impostata finché non si è pronti.
+- `REMINDER_FROM_EMAIL` — opzionale, default
+  `IncassaPrima <onboarding@resend.dev>` (il dominio sandbox di Resend:
+  consegna solo all'indirizzo email del proprio account Resend, utile
+  per i test). **Richiede un dominio proprio verificato su Resend
+  (record DNS SPF/DKIM) prima di poter inviare a clienti reali** — una
+  volta verificato, impostare qui un mittente su quel dominio (es.
+  `IncassaPrima <promemoria@incassaprima.it>`).
+
+Il toggle "Invia i solleciti automaticamente via email" nella UI
+"Regole sollecito" resta a disposizione di ogni organizzazione ma va
+attivato consapevolmente solo dopo aver completato questa
+configurazione: finché `RESEND_API_KEY` non è impostata, attivarlo non
+causa danni (le email semplicemente non partono, con errore registrato),
+ma nemmeno funziona.
+
 ## Attenzione: EXECUTE concesso di default anche ad `anon`
 
 Ogni volta che si crea una nuova funzione nello schema `public`,
@@ -132,6 +209,18 @@ sostituire le chiamate a funzione nelle policy con subquery inline
 stessa nella propria policy di SELECT, e oggi evita la ricorsione solo
 grazie a `SECURITY DEFINER` — e va fatta in un ambiente di staging con
 dati reali di test, non applicata a freddo su produzione.
+
+## Nota: `pg_net` nello schema `public`
+
+Il Security Advisor segnala (WARN) che l'estensione `pg_net` è installata
+nello schema `public`. È un compromesso accettato: `pg_net` **non
+supporta** `alter extension ... set schema` (errore
+`extension "pg_net" does not support SET SCHEMA`), e le funzioni
+effettive (`net.http_post`, ecc., usate dal cron job dei promemoria) sono
+comunque nel proprio schema dedicato `net`, non in `public` — spostare
+l'estensione richiederebbe drop/ricreazione con il rischio di rompere il
+cron job funzionante, per un beneficio puramente di pulizia. Pattern
+comune a moltissimi progetti Supabase che usano `pg_net`.
 
 ## Regola operativa
 
