@@ -61,7 +61,14 @@ import {
       automatic_email_enabled: false
     },
 
-    localInvoices: []
+    localInvoices: [],
+
+    // Modalità Studio: un account Studio non lavora mai direttamente
+    // sulla propria organizzazione "identità" (creata alla registrazione),
+    // ma su una o più aziende gestite (organizations.managed_by = identità).
+    isStudioAccount: false,
+    studioIdentityOrgId: null,
+    studioCompanies: []
   };
 
   const models = {
@@ -106,13 +113,6 @@ Cordiali saluti.`
     return SUPABASE_URL.startsWith('https://') &&
       SUPABASE_URL.includes('.supabase.co') &&
       SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
-  }
-
-  function getOrganizationPlan() {
-    if (!state.organization || !state.organization.plan) {
-      return 'free';
-    }
-    return state.organization.plan;
   }
 
   function toast(message, persistent = false) {
@@ -228,12 +228,11 @@ Cordiali saluti.`
   }
 
   function updateFeaturesByPlan() {
-    const plan = getOrganizationPlan();
-
-    // Dashboard Studio: visibile solo per piano 'studio'
+    // Dashboard Studio: visibile solo per gli account Studio (indipendentemente
+    // dal piano dell'azienda attualmente aperta, che è sempre 'free').
     const studioBtn = $('studioBtn');
     if (studioBtn) {
-      studioBtn.style.display = (plan === 'studio') ? 'inline-block' : 'none';
+      studioBtn.style.display = state.isStudioAccount ? 'inline-block' : 'none';
     }
   }
 
@@ -292,9 +291,8 @@ Cordiali saluti.`
 
     const { data: memberships, error: membershipError } = await state.supabase
       .from('organization_members')
-      .select('organization_id, role, organizations(id, name, plan)')
-      .eq('user_id', state.session.user.id)
-      .limit(1);
+      .select('organization_id, role, organizations(id, name, plan, managed_by)')
+      .eq('user_id', state.session.user.id);
 
     if (membershipError) {
       setStatus(`Errore organizzazione: ${membershipError.message}`, 'error');
@@ -306,9 +304,43 @@ Cordiali saluti.`
       return;
     }
 
-    state.organization = memberships[0].organizations;
+    const identityMembership = memberships.find(
+      (m) => m.organizations && m.organizations.plan === 'studio'
+    );
+
+    if (identityMembership) {
+      // Account Studio: l'organizzazione "identità" non ospita mai dati
+      // propri, serve solo a qualificare il piano. Le aziende gestite sono
+      // le altre organizzazioni collegate ad essa tramite managed_by.
+      state.isStudioAccount = true;
+      state.studioIdentityOrgId = identityMembership.organization_id;
+      state.studioCompanies = memberships
+        .filter((m) => m.organizations && m.organizations.managed_by === state.studioIdentityOrgId)
+        .map((m) => m.organizations)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      state.organization = null;
+      updateAccountUi();
+      render();
+      openStudio();
+      return;
+    }
+
+    state.isStudioAccount = false;
+    state.studioIdentityOrgId = null;
+    state.studioCompanies = [];
+
+    await loadOrganizationData(memberships[0].organizations);
+  }
+
+  // Carica clienti, fatture, regole di sollecito e promemoria programmati
+  // per una singola organizzazione (la propria, per un utente Free/Pro, o
+  // un'azienda scelta dallo switcher Studio) e la imposta come attiva.
+  async function loadOrganizationData(organization) {
+    state.organization = organization;
     updateAccountUi();
-    const organizationId = memberships[0].organization_id;
+
+    const organizationId = organization.id;
     await loadReminderSettings();
 
     const { data: customers, error: customerError } = await state.supabase
@@ -345,6 +377,60 @@ Cordiali saluti.`
     render();
     await loadScheduledReminders();
     await generateScheduledReminders();
+  }
+
+  // Apre un'azienda gestita dallo Studio: carica i suoi dati e torna alla
+  // vista principale, esattamente come per un account Pro.
+  async function selectCompany(organizationId) {
+    const company = state.studioCompanies.find((c) => c.id === organizationId);
+    if (!company) return;
+
+    closeStudio();
+    setStatus(`Cloud attivo · ${company.name}`, 'success');
+    await loadOrganizationData(company);
+  }
+
+  // Ricarica solo l'elenco delle aziende gestite (dopo averne creata una),
+  // senza toccare l'azienda eventualmente già aperta.
+  async function refreshStudioCompanies() {
+    if (!state.supabase || !state.session || !state.studioIdentityOrgId) return;
+
+    const { data: memberships, error } = await state.supabase
+      .from('organization_members')
+      .select('organizations(id, name, plan, managed_by)')
+      .eq('user_id', state.session.user.id);
+
+    if (error) {
+      toast(`Errore caricamento aziende: ${error.message}`);
+      return;
+    }
+
+    state.studioCompanies = (memberships || [])
+      .map((m) => m.organizations)
+      .filter((org) => org && org.managed_by === state.studioIdentityOrgId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async function createManagedCompany(name) {
+    const trimmed = String(name || '').trim();
+    if (trimmed.length < 2) {
+      toast('Inserisci un nome azienda di almeno 2 caratteri.');
+      return;
+    }
+
+    const { data: newOrgId, error } = await state.supabase.rpc('create_managed_company', {
+      company_name: trimmed
+    });
+
+    if (error) {
+      toast(`Impossibile creare l'azienda: ${error.message}`);
+      return;
+    }
+
+    await refreshStudioCompanies();
+    renderStudio();
+    toast('Azienda creata.');
+    return newOrgId;
   }
 
   function updateCustomerOptions() {
@@ -471,6 +557,12 @@ Cordiali saluti.`
     if (!dueDate) {
       toast('Inserisci la data di scadenza.');
       $('dueDate').focus();
+      return;
+    }
+
+    if (state.session && state.isStudioAccount && !state.organization) {
+      toast('Seleziona prima un\'azienda dalla dashboard Studio.');
+      openStudio();
       return;
     }
 
@@ -951,12 +1043,15 @@ Cordiali saluti.`
     if (!state.supabase) return;
     await state.supabase.auth.signOut();
     state.session = null;
-    updateAccountUi();
     state.organization = null;
     state.customers = [];
     state.invoices = [];
     state.scheduledReminders = [];
     state.activeScheduledReminder = null;
+    state.isStudioAccount = false;
+    state.studioIdentityOrgId = null;
+    state.studioCompanies = [];
+    updateAccountUi();
     updateApprovalBadge();
     normalizeLocalInvoices();
     updateCustomerOptions();
@@ -1071,6 +1166,12 @@ Cordiali saluti.`
 
   async function importFile(file) {
     if (!file) return;
+
+    if (state.session && state.isStudioAccount && !state.organization) {
+      toast('Seleziona prima un\'azienda dalla dashboard Studio.');
+      openStudio();
+      return;
+    }
 
     try {
       const importedData = await readImportRows(file);
@@ -2222,42 +2323,42 @@ Cordiali saluti.`
   function renderStudio() {
     const query = ($('studioSearch').value || '').trim().toLowerCase();
 
-    const clients = state.customers
-      .filter((client) => {
-        const text = `${client.name || ''} ${client.email || ''} ${client.pec || ''}`.toLowerCase();
-        return !query || text.includes(query);
-      })
+    const companies = state.studioCompanies
+      .filter((company) => !query || company.name.toLowerCase().includes(query))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    if (!clients.length) {
-      $('studioClientsContent').innerHTML = '<p>Nessun cliente trovato nello studio.</p>';
+    const activeNotice = state.organization
+      ? `<p class="smallhint" style="margin-bottom:12px">Azienda aperta ora: <strong>${escapeHtml(state.organization.name)}</strong></p>`
+      : '';
+
+    if (!companies.length) {
+      $('studioClientsContent').innerHTML = `${activeNotice}<p>Nessuna azienda ancora aggiunta. Usa il modulo qui sopra per aggiungerne una.</p>`;
       return;
     }
 
     $('studioClientsContent').innerHTML = `
+    ${activeNotice}
     <div class="customer-list">
-      ${clients.map((client) => {
-      const metrics = customerMetrics(client);
-      return `
+      ${companies.map((company) => `
           <article class="customer-row">
             <div>
-              <strong>${escapeHtml(client.name)}</strong>
-              <small>${escapeHtml(client.email || client.pec || client.phone || 'Nessun contatto registrato')}</small>
-              ${client.reminders_paused ? '<small style="color:#b45309;font-weight:700">Solleciti automatici sospesi</small>' : ''}
+              <strong>${escapeHtml(company.name)}</strong>
+              ${company.id === (state.organization && state.organization.id) ? '<small style="color:#047857;font-weight:700">Aperta ora</small>' : ''}
             </div>
-            <div class="customer-metric"><span>Da incassare</span><b>${moneyFromCents(metrics.openCents)}</b></div>
-            <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.overdueCents)}</b></div>
             <div class="customer-actions">
-              <button type="button" class="small secondary" data-studio-client-op="open" data-studio-client-id="${client.id}">Apri</button>
+              <button type="button" class="small secondary" data-studio-company-op="open" data-studio-company-id="${company.id}">Apri</button>
             </div>
-          </article>`;
-    }).join('')}
+          </article>`).join('')}
     </div>`;
   }
 
   function openCustomers() {
     if (!state.session) {
       toast('Accedi al cloud per gestire l’anagrafica clienti.');
+      return;
+    }
+    if (state.isStudioAccount && !state.organization) {
+      openStudio();
       return;
     }
     $('customerSearch').value = '';
@@ -2787,6 +2888,10 @@ Cordiali saluti.`
       toast('Accedi al cloud per visualizzare l’analisi incassi.');
       return;
     }
+    if (state.isStudioAccount && !state.organization) {
+      openStudio();
+      return;
+    }
 
     $('analyticsBack').style.display = 'flex';
     renderAnalytics();
@@ -3167,17 +3272,25 @@ Cordiali saluti.`
     $('studioSearch').addEventListener('input', renderStudio);
 
     $('studioClientsContent').addEventListener('click', (event) => {
-      const button = event.target.closest('button[data-studio-client-op]');
+      const button = event.target.closest('button[data-studio-company-op]');
       if (!button) return;
 
-      const client = state.customers.find((item) => item.id === button.dataset.studioClientId);
-      if (!client) return;
+      if (button.dataset.studioCompanyOp === 'open') {
+        selectCompany(button.dataset.studioCompanyId);
+      }
+    });
 
-      if (button.dataset.studioClientOp === 'open') {
-        // Per ora apriamo il modal Clienti esistente
-        openCustomers();
-        $('customerSearch').value = client.name;
-        renderCustomers();
+    $('studioAddCompanyBtn').addEventListener('click', async () => {
+      const input = $('studioNewCompanyName');
+      const newOrgId = await createManagedCompany(input.value);
+      if (newOrgId) {
+        input.value = '';
+      }
+    });
+    $('studioNewCompanyName').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        $('studioAddCompanyBtn').click();
       }
     });
     $('closePlansBtn').addEventListener('click', closePlans);
@@ -3412,9 +3525,4 @@ Cordiali saluti.`
       closeImportSummary();
     }
   });
-// Esporre funzioni globalmente per la console
-window.getOrganizationPlan = getOrganizationPlan;
-window.updateFeaturesByPlan = updateFeaturesByPlan;
-window.updateAccountUi = updateAccountUi;
-window.state = state;
 })();

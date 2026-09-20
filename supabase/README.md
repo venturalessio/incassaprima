@@ -30,6 +30,41 @@ non contiene istruzioni DDL e non deve ricreare lo schema esistente.
   senza alcun controllo lato server. Il campo `plan` deve ora essere
   scritto solo da un processo con `service_role` (es. webhook di
   fatturazione).
+- `20260920141311` — aggiunge `organizations.managed_by`: collega
+  un'azienda gestita alla sua organizzazione Studio "identità" (`NULL`
+  per un'organizzazione autonoma, cioè un utente Free/Pro o l'identità
+  Studio stessa).
+- `20260920141325` — aggiunge la funzione `create_managed_company`
+  (`SECURITY DEFINER`): crea una nuova azienda gestita solo se chi
+  chiama è owner di un'organizzazione con `plan = 'studio'`, sullo
+  stesso modello di `handle_new_user()`. Nessuna nuova policy RLS
+  necessaria: la funzione crea anche la riga in `organization_members`,
+  quindi tutte le policy esistenti su clienti/fatture/promemoria si
+  applicano invariate all'azienda appena creata.
+- `20260920141407` — revoca l'EXECUTE su `create_managed_company` dal
+  ruolo `anon` (vedi nota sotto: Supabase lo concede di default anche
+  ad `anon`, non solo a `PUBLIC`).
+
+**Modello Studio → aziende gestite**: un account Studio ha
+un'organizzazione "identità" (quella creata alla registrazione, con
+`plan = 'studio'`) che non ospita mai clienti o fatture proprie, e una o
+più organizzazioni "azienda" collegate tramite `managed_by`, ciascuna
+isolata dalle altre esattamente come qualunque organizzazione Free/Pro
+(stesse RLS, nessuna eccezione). L'app decide quale mostrare in base
+all'organizzazione attiva in `state.organization`, non serve alcuna
+policy dedicata per la lettura/scrittura di clienti e fatture.
+
+## Attenzione: EXECUTE concesso di default anche ad `anon`
+
+Ogni volta che si crea una nuova funzione nello schema `public`,
+Supabase le concede EXECUTE non solo a `PUBLIC` ma anche esplicitamente
+ad `anon` e `authenticated` (privilegi di default a livello di schema).
+`revoke ... from public` **non basta** a togliere l'accesso ad `anon`:
+serve un `revoke execute on function ... from anon` esplicito subito
+dopo la creazione, se la funzione non deve essere chiamabile da utenti
+non autenticati. È già successo due volte in questo progetto
+(`create_managed_company` in `20260920141407`) — controllarlo con
+`get_advisors(type: "security")` dopo ogni nuova funzione.
 
 ## Nota: EXECUTE su `is_organization_member` / `is_organization_owner`
 
