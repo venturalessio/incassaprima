@@ -35,8 +35,36 @@ sessioni di sviluppo.
 ## Funzionalità da costruire
 
 - **Fatturazione reale dei piani Pro/Studio**: integrazione pagamenti
-  (Stripe o simile) + webhook che aggiorna `organizations.plan` con
-  `service_role` (oggi il campo è scrivibile solo da lì, per design).
+  + webhook che aggiorna `organizations.plan` con `service_role` (oggi
+  il campo è scrivibile solo da lì, per design). Decisioni prese il
+  20/09/2026 dopo una ricerca di mercato (concorrenti italiani di
+  fatturazione/gestionale, non i tool internazionali di *dunning*
+  enterprise, fuori target):
+  - **Prezzi** (già aggiornati su landing page e modal Piani in-app):
+    Pro da €9/mese; Studio da €19/mese fino a 3 aziende gestite, +€5/mese
+    per ogni azienda aggiuntiva (modello analogo a Danea Easyfatt, che fa
+    pagare €120/anno per azienda aggiuntiva sulle licenze multi-azienda).
+  - **Piattaforma di pagamento: Stripe** (non Paddle/Lemon Squeezy). I
+    servizi *merchant of record* toglierebbero l'onere IVA ma
+    diventerebbero loro il venditore legale: per una clientela quasi
+    interamente italiana e B2B, che si aspetta una fattura elettronica
+    vera per scaricare l'IVA, questo creerebbe attrito reale (l'obbligo
+    SdI riguarda i soggetti stabiliti in Italia). Con Stripe il
+    venditore resti tu, e l'integrazione con Supabase via webhook →
+    Edge Function → update di `organizations.plan` è già lo schema
+    preparato.
+  - **Fatturazione**: l'utente **non ha ancora partita IVA**. Per
+    un'attività ricorrente come un abbonamento SaaS la "prestazione
+    occasionale" non è percorribile (rischio di riqualificazione
+    dell'attività come abituale, con sanzioni). Percorso indicato:
+    apertura di una partita IVA in **regime forfettario** (gratuita,
+    imposta sostitutiva 5% i primi 5 anni), usando gli strumenti
+    gratuiti dell'Agenzia delle Entrate (portale "Fatture e
+    Corrispettivi") per generare le fatture elettroniche verso gli
+    abbonati — sufficienti al volume iniziale, nessun gestionale a
+    pagamento necessario solo per questo. **Da verificare con un
+    commercialista prima di procedere** (codice ATECO corretto e
+    conferma dei dettagli del regime).
 - **Promemoria automatici via email** — infrastruttura completata il
   20/09/2026, **ma non ancora attivabile per clienti reali**. Funzione
   Edge `send-reminder-emails` pianificata (`pg_cron`, ogni giorno alle
