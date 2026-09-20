@@ -81,7 +81,16 @@ import { computeAnalytics } from './lib/analytics.js';
       totalOverdueCount: 0,
       byCompany: {},
       own: { openCents: 0, overdueCents: 0, overdueCount: 0 }
-    }
+    },
+
+    // Multi-utente: ruolo del membro corrente per ogni organizzazione di
+    // cui fa parte (owner/member), e stato dell'eventuale invito in corso
+    // (link ?invite=<token> aperto prima di avere un account).
+    roleByOrgId: {},
+    pendingInviteToken: null,
+    pendingInvitePreview: null,
+    teamMembers: [],
+    pendingInvitesList: []
   };
 
   const models = {
@@ -247,6 +256,20 @@ Cordiali saluti.`
     if (studioBtn) {
       studioBtn.style.display = state.isStudioAccount ? 'inline-block' : 'none';
     }
+
+    // Team: visibile per qualunque account cloud (piano Pro o Studio),
+    // non per la modalità locale.
+    const teamBtn = $('teamBtn');
+    if (teamBtn) {
+      teamBtn.style.display = state.session ? 'inline-block' : 'none';
+    }
+  }
+
+  // Ruolo del membro corrente nell'organizzazione attualmente aperta
+  // (owner/member), calcolato dalle appartenenze caricate in loadCloudData().
+  function myRole() {
+    if (!state.organization) return null;
+    return state.roleByOrgId[state.organization.id] || null;
   }
 
   async function initializeSupabase() {
@@ -262,6 +285,8 @@ Cordiali saluti.`
 
     state.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+    await detectPendingInvite();
+
     const { data, error } = await state.supabase.auth.getSession();
     if (error) {
       setStatus(`Errore sessione: ${error.message}`, 'error');
@@ -271,11 +296,100 @@ Cordiali saluti.`
     state.session = data.session;
     updateAccountUi();
     if (state.session) {
-      await loadCloudData();
+      if (state.pendingInviteToken) {
+        await acceptPendingInvite();
+      } else {
+        await loadCloudData();
+      }
       setStatus(`Cloud attivo · ${state.session.user.email}`, 'success');
     } else {
       setStatus('Modalità locale. Accedi per salvare nel cloud.', 'info');
+      if (state.pendingInviteToken) {
+        openAuthForInvite();
+      }
     }
+  }
+
+  // Rileva ?invite=<token> nell'URL e ne carica un'anteprima (nome
+  // organizzazione, ruolo proposto, validità) senza richiedere un account:
+  // get_invite_preview è l'unica funzione RPC concessa anche ad `anon`.
+  async function detectPendingInvite() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('invite');
+    if (!token) return;
+
+    state.pendingInviteToken = token;
+
+    const { data, error } = await state.supabase.rpc('get_invite_preview', {
+      invite_token: token
+    });
+
+    if (error) {
+      console.error('Errore anteprima invito:', error.message);
+      return;
+    }
+
+    state.pendingInvitePreview = (data && data[0]) || null;
+  }
+
+  function openAuthForInvite() {
+    openAuth();
+    $('showSignUp').click();
+    renderInviteBanner();
+  }
+
+  function renderInviteBanner() {
+    const banner = $('inviteBanner');
+    const orgField = $('organizationNameField');
+    if (!banner) return;
+
+    if (!state.pendingInviteToken) {
+      banner.style.display = 'none';
+      if (orgField) orgField.style.display = '';
+      return;
+    }
+
+    const preview = state.pendingInvitePreview;
+    if (preview && preview.valid) {
+      banner.textContent = `Stai per unirti a: ${preview.organization_name} (ruolo: ${preview.role === 'owner' ? 'proprietario' : 'collaboratore'}).`;
+      if (orgField) orgField.style.display = 'none';
+    } else {
+      banner.textContent = 'Questo link di invito non è valido o è scaduto: puoi comunque creare un account autonomo.';
+      if (orgField) orgField.style.display = '';
+    }
+    banner.style.display = 'block';
+  }
+
+  // Dopo login/registrazione con un invito in sospeso, prova ad accettarlo.
+  // Per la v1 funziona solo se l'account non ha già un'altra organizzazione:
+  // in caso contrario il server rifiuta con un errore esplicito, e qui
+  // ricarichiamo comunque i dati dell'organizzazione già esistente
+  // dell'utente, così l'accesso normale non viene interrotto.
+  async function acceptPendingInvite() {
+    const token = state.pendingInviteToken;
+    if (!token || !state.session) return;
+
+    const { error } = await state.supabase.rpc('accept_organization_invite', {
+      invite_token: token
+    });
+
+    clearPendingInvite();
+
+    if (error) {
+      toast(`Invito non accettato: ${error.message}`);
+    } else {
+      toast('Invito accettato: benvenuto nel team.');
+    }
+
+    await loadCloudData();
+  }
+
+  function clearPendingInvite() {
+    state.pendingInviteToken = null;
+    state.pendingInvitePreview = null;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url);
   }
 
 
@@ -316,6 +430,11 @@ Cordiali saluti.`
       setStatus('Account creato ma organizzazione non trovata. Controlla il trigger SQL.', 'error');
       return;
     }
+
+    state.roleByOrgId = {};
+    memberships.forEach((m) => {
+      state.roleByOrgId[m.organization_id] = m.role;
+    });
 
     const identityMembership = memberships.find(
       (m) => m.organizations && m.organizations.plan === 'studio'
@@ -489,13 +608,17 @@ Cordiali saluti.`
 
     const { data: memberships, error } = await state.supabase
       .from('organization_members')
-      .select('organizations(id, name, plan, managed_by)')
+      .select('organization_id, role, organizations(id, name, plan, managed_by)')
       .eq('user_id', state.session.user.id);
 
     if (error) {
       toast(`Errore caricamento aziende: ${error.message}`);
       return;
     }
+
+    (memberships || []).forEach((m) => {
+      state.roleByOrgId[m.organization_id] = m.role;
+    });
 
     state.studioCompanies = (memberships || [])
       .map((m) => m.organizations)
@@ -592,6 +715,178 @@ Cordiali saluti.`
     renderStudio();
     toast('Azienda creata.');
     return newOrgId;
+  }
+
+  // --- Team: collaboratori dell'organizzazione attualmente aperta ---
+  // Funziona su qualunque organizzazione (Pro, identità Studio o azienda
+  // gestita): le RLS di organization_invites/organization_members
+  // restano invariate, solo il proprietario vede e gestisce gli inviti.
+
+  function openTeam() {
+    if (!state.session) {
+      toast('Accedi al cloud per gestire il team.');
+      return;
+    }
+    if (state.isStudioAccount && !state.organization) {
+      openStudio();
+      return;
+    }
+    $('teamBack').style.display = 'flex';
+    renderTeam();
+    loadTeamData();
+  }
+
+  function closeTeam() {
+    $('teamBack').style.display = 'none';
+  }
+
+  async function loadTeamData() {
+    if (!state.organization) return;
+
+    const { data: members, error: membersError } = await state.supabase.rpc(
+      'list_organization_members',
+      { target_organization_id: state.organization.id }
+    );
+
+    if (membersError) {
+      toast(`Errore caricamento team: ${membersError.message}`);
+      return;
+    }
+
+    state.teamMembers = members || [];
+
+    if (myRole() === 'owner') {
+      const { data: invites, error: invitesError } = await state.supabase
+        .from('organization_invites')
+        .select('id, token, role, invited_email, created_at, expires_at, accepted_at')
+        .eq('organization_id', state.organization.id)
+        .is('accepted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (invitesError) {
+        console.error('Errore caricamento inviti:', invitesError.message);
+      } else {
+        state.pendingInvitesList = invites || [];
+      }
+    } else {
+      state.pendingInvitesList = [];
+    }
+
+    renderTeam();
+  }
+
+  function inviteLinkFor(token) {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.searchParams.set('invite', token);
+    return url.toString();
+  }
+
+  async function copyTextToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      window.prompt('Copia questo link manualmente:', text);
+    }
+  }
+
+  function renderTeam() {
+    const isOwner = myRole() === 'owner';
+
+    const membersList = state.teamMembers.length
+      ? state.teamMembers.map((member) => `
+        <article class="customer-row">
+          <div>
+            <strong>${escapeHtml(member.email)}</strong>
+            <small>${member.role === 'owner' ? 'Proprietario' : 'Collaboratore'} · dal ${dateIt(String(member.joined_at).slice(0, 10))}</small>
+          </div>
+        </article>`).join('')
+      : '<p>Nessun membro trovato.</p>';
+
+    const invitesSection = isOwner ? `
+      <p class="smallhint" style="margin:16px 0 8px">Inviti in attesa</p>
+      <div class="customer-list">
+        ${
+          state.pendingInvitesList.length
+            ? state.pendingInvitesList.map((invite) => {
+              const expired = new Date(invite.expires_at) <= new Date();
+              return `
+              <article class="customer-row">
+                <div>
+                  <strong>${invite.invited_email ? escapeHtml(invite.invited_email) : 'Link aperto (senza email specifica)'}</strong>
+                  <small>${invite.role === 'owner' ? 'Proprietario' : 'Collaboratore'} · ${expired ? 'scaduto' : `valido fino al ${dateIt(String(invite.expires_at).slice(0, 10))}`}</small>
+                </div>
+                <div class="customer-actions">
+                  <button type="button" class="small secondary" data-invite-op="copy" data-invite-token="${invite.token}">Copia link</button>
+                  <button type="button" class="small danger" data-invite-op="revoke" data-invite-id="${invite.id}">Revoca</button>
+                </div>
+              </article>`;
+            }).join('')
+            : '<p>Nessun invito in attesa.</p>'
+        }
+      </div>
+      <div class="studio-toolbar" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;align-items:center">
+        <input id="teamInviteEmail" type="email" placeholder="Email (opzionale)" style="flex:1;min-width:200px" />
+        <select id="teamInviteRole">
+          <option value="member">Collaboratore</option>
+          <option value="owner">Proprietario</option>
+        </select>
+        <button type="button" id="teamCreateInviteBtn" class="small">Crea invito</button>
+      </div>
+      <p class="smallhint">Chi ha già un account IncassaPrima non può accettare l'invito: per ora funziona solo per chi si registra per la prima volta.</p>
+    ` : '';
+
+    $('teamContent').innerHTML = `
+      <p class="smallhint" style="margin-bottom:8px">Membri di: <strong>${escapeHtml(state.organization ? state.organization.name : '')}</strong></p>
+      <div class="customer-list">${membersList}</div>
+      ${invitesSection}
+    `;
+  }
+
+  async function createTeamInvite() {
+    if (!state.organization) return;
+
+    const email = $('teamInviteEmail').value.trim();
+    const role = $('teamInviteRole').value;
+
+    const { data, error } = await state.supabase
+      .from('organization_invites')
+      .insert({
+        organization_id: state.organization.id,
+        role,
+        invited_email: email || null,
+        created_by: state.session.user.id
+      })
+      .select('token')
+      .single();
+
+    if (error) {
+      toast(`Impossibile creare l'invito: ${error.message}`);
+      return;
+    }
+
+    const link = inviteLinkFor(data.token);
+    await copyTextToClipboard(link);
+    toast('Invito creato: link copiato negli appunti.');
+
+    await loadTeamData();
+  }
+
+  async function revokeTeamInvite(inviteId) {
+    if (!confirm('Revocare questo invito? Il link smetterà di funzionare.')) return;
+
+    const { error } = await state.supabase
+      .from('organization_invites')
+      .delete()
+      .eq('id', inviteId);
+
+    if (error) {
+      toast(`Impossibile revocare l'invito: ${error.message}`);
+      return;
+    }
+
+    toast('Invito revocato.');
+    await loadTeamData();
   }
 
   function updateCustomerOptions() {
@@ -1138,19 +1433,24 @@ Cordiali saluti.`
     const email = $('signupEmail').value.trim();
     const password = $('signupPassword').value;
     const organizationName = $('organizationName').value.trim();
+    const inviteToken = state.pendingInviteToken;
 
     if (!email || !password || password.length < 8) {
       toast('Inserisci email e password di almeno 8 caratteri.');
       return;
     }
 
+    const redirectUrl = new URL('https://venturalessio.github.io/incassaprima/app/');
+    if (inviteToken) redirectUrl.searchParams.set('invite', inviteToken);
+
     const { data, error } = await state.supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: 'https://venturalessio.github.io/incassaprima/app/',
+        emailRedirectTo: redirectUrl.toString(),
         data: {
-          organization_name: organizationName || undefined
+          organization_name: inviteToken ? undefined : (organizationName || undefined),
+          invite_token: inviteToken || undefined
         }
       }
     });
@@ -1163,7 +1463,11 @@ Cordiali saluti.`
     if (data.session) {
       state.session = data.session;
       updateAccountUi();
-      await loadCloudData();
+      if (inviteToken) {
+        await acceptPendingInvite();
+      } else {
+        await loadCloudData();
+      }
       setStatus(`Cloud attivo · ${email}`, 'success');
       closeAuth();
       toast('Account creato e cloud attivo.');
@@ -1194,7 +1498,11 @@ Cordiali saluti.`
 
     state.session = data.session;
     updateAccountUi();
-    await loadCloudData();
+    if (state.pendingInviteToken) {
+      await acceptPendingInvite();
+    } else {
+      await loadCloudData();
+    }
     setStatus(`Cloud attivo · ${email}`, 'success');
     closeAuth();
     toast('Accesso eseguito.');
@@ -1213,6 +1521,9 @@ Cordiali saluti.`
     state.studioIdentityOrgId = null;
     state.studioIdentityOrg = null;
     state.studioCompanies = [];
+    state.roleByOrgId = {};
+    state.teamMembers = [];
+    state.pendingInvitesList = [];
     updateAccountUi();
     updateApprovalBadge();
     normalizeLocalInvoices();
@@ -1228,6 +1539,7 @@ Cordiali saluti.`
       return;
     }
     $('authBack').style.display = 'flex';
+    renderInviteBanner();
   }
 
   function closeAuth() {
@@ -3433,6 +3745,30 @@ Cordiali saluti.`
     $('studioBtn').addEventListener('click', openStudio);
     // Listener per il modal Piani (chiusura)
     $('studioSearch').addEventListener('input', renderStudio);
+
+    $('teamBtn').addEventListener('click', openTeam);
+    $('closeTeamBtn').addEventListener('click', closeTeam);
+    $('closeTeamActionBtn').addEventListener('click', closeTeam);
+    $('teamBack').addEventListener('click', (event) => {
+      if (event.target === $('teamBack')) closeTeam();
+    });
+    $('teamContent').addEventListener('click', (event) => {
+      const createBtn = event.target.closest('#teamCreateInviteBtn');
+      if (createBtn) {
+        createTeamInvite();
+        return;
+      }
+
+      const opButton = event.target.closest('button[data-invite-op]');
+      if (!opButton) return;
+
+      if (opButton.dataset.inviteOp === 'copy') {
+        copyTextToClipboard(inviteLinkFor(opButton.dataset.inviteToken));
+        toast('Link copiato negli appunti.');
+      } else if (opButton.dataset.inviteOp === 'revoke') {
+        revokeTeamInvite(opButton.dataset.inviteId);
+      }
+    });
 
     $('studioClientsContent').addEventListener('click', (event) => {
       const button = event.target.closest('button[data-studio-company-op]');

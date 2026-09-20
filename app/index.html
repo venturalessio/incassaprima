@@ -781,6 +781,7 @@
   <button type="button" class="secondary" id="rulesBtn">Regole</button>
   <button type="button" class="secondary" id="guideBtn">Guida</button>
   <button type="button" class="secondary" id="studioBtn" style="display:none">Studio</button>
+  <button type="button" class="secondary" id="teamBtn" style="display:none">Team</button>
   <button type="button" class="secondary" id="approvalBtn">Da approvare<span id="approvalCount">0</span></button>
   <button type="button" class="secondary" id="customersBtn">Clienti</button>
   <button type="button" class="secondary" id="analyticsBtn">Analisi incassi</button>
@@ -1112,6 +1113,7 @@
             <li>fasce di anzianità crediti (0–30, 31–60, 61–90, oltre 90 giorni);</li>
             <li>classifica dei principali debitori (top 10).</li>
           </ul>
+          <li>inviti via link per aggiungere collaboratori al team (funzionano solo per chi non ha già un account IncassaPrima).</li>
         </ul>
       </section>
 
@@ -1184,6 +1186,41 @@
 
     <div class="modalactions">
       <button type="button" id="closeStudioActionBtn">
+        Chiudi
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="teamBack" class="modalback">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="teamTitle"
+  >
+    <div class="modalhead">
+      <div>
+        <h2 id="teamTitle">Team</h2>
+        <p class="hint">
+          Chi ha accesso a questa organizzazione, e — se sei il proprietario — gli inviti per aggiungere collaboratori.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="closeTeamBtn"
+        class="close"
+        aria-label="Chiudi team"
+      >×</button>
+    </div>
+
+    <div id="teamContent" style="max-height:60vh;overflow-y:auto;padding:0 16px">
+      <p>Caricamento…</p>
+    </div>
+
+    <div class="modalactions">
+      <button type="button" id="closeTeamActionBtn">
         Chiudi
       </button>
     </div>
@@ -1479,7 +1516,8 @@
     </div>
 
     <div id="signUpForm" class="auth-form">
-      <div class="field"><label for="organizationName">Nome azienda / attività</label><input id="organizationName" autocomplete="organization" placeholder="es. Rossi Impianti SRL"></div>
+      <p id="inviteBanner" class="auth-note" style="display:none;background:#eff6ff;border-radius:8px;padding:10px 12px;margin-bottom:12px"></p>
+      <div class="field" id="organizationNameField"><label for="organizationName">Nome azienda / attività</label><input id="organizationName" autocomplete="organization" placeholder="es. Rossi Impianti SRL"></div>
       <div class="field"><label for="signupEmail">Email</label><input id="signupEmail" type="email" autocomplete="email" placeholder="nome@azienda.it"></div>
       <div class="field"><label for="signupPassword">Password</label><input id="signupPassword" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri"></div>
       <div class="modalactions"><button type="button" id="signUpBtn">Crea account gratuito</button></div>

@@ -41,9 +41,18 @@ sessioni di sviluppo.
   (Resend/SendGrid o simile) + cron che rispetti
   `organization_reminder_settings` (colonne già pronte nel DB, nessuna
   automazione dietro).
-- **Multi-utente per organizzazione**: oggi `organization_members` non ha
-  un modo per invitare colleghi oltre al proprietario creato alla
-  registrazione — serve un flusso di invito (email + accettazione).
+- ~~**Multi-utente per organizzazione**~~ Fatto il 20/09/2026: inviti
+  via link (`?invite=<token>`) per aggiungere collaboratori a
+  qualunque organizzazione (Pro, identità Studio o azienda gestita).
+  Solo il proprietario può creare/vedere/revocare gli inviti (modal
+  "Team" in-app); l'accettazione avviene tramite la funzione
+  server-side `accept_organization_invite`, che verifica validità e
+  scadenza e — per la v1 — **funziona solo per chi non ha ancora un
+  account IncassaPrima**: chi ha già una propria organizzazione viene
+  rifiutato con un errore esplicito (nessuno switcher
+  multi-organizzazione). Un invito può opzionalmente essere legato a
+  un indirizzo email specifico. Estendere a un vero multi-organizzazione
+  è lavoro futuro, non necessario per il modello di business attuale.
 - ~~**Rinominare/eliminare un'azienda dall'interfaccia**~~ Fatto il
   20/09/2026: dallo switcher Studio si può rinominare sia l'identità
   Studio sia ogni azienda gestita (semplice UPDATE, le RLS lo

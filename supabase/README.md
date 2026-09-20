@@ -44,6 +44,49 @@ non contiene istruzioni DDL e non deve ricreare lo schema esistente.
 - `20260920141407` — revoca l'EXECUTE su `create_managed_company` dal
   ruolo `anon` (vedi nota sotto: Supabase lo concede di default anche
   ad `anon`, non solo a `PUBLIC`).
+- `20260920151806` — aggiunge la funzione `delete_managed_company`
+  (`SECURITY DEFINER`): elimina un'azienda gestita (clienti, fatture e
+  storico compresi) solo se chi chiama è owner dell'azienda stessa e
+  solo se `managed_by is not null`, così l'identità Studio non può mai
+  essere eliminata per questa via.
+- `20260920183410` — aggiunge la tabella `organization_invites` (invito
+  con `token uuid` univoco, `role`, `invited_email` opzionale,
+  `expires_at` di default a 7 giorni), con RLS che permette solo
+  all'owner dell'organizzazione di creare/vedere/eliminare i propri
+  inviti.
+- `20260920183430` — aggiunge la funzione `accept_organization_invite`
+  (`SECURITY DEFINER`): verifica che l'invito sia valido, non scaduto e
+  non già accettato; **v1: rifiuta esplicitamente chi ha già una
+  qualunque riga in `organization_members`** (nessuno switcher
+  multi-organizzazione, funziona solo per chi non ha ancora un account
+  IncassaPrima); se l'invito specifica `invited_email`, lo confronta
+  (case-insensitive) con `auth.jwt() ->> 'email'`; se tutto è valido,
+  inserisce la riga di membership e marca l'invito come accettato.
+- `20260920183854` — aggiunge la funzione `list_organization_members`
+  (`SECURITY DEFINER`): espone email/ruolo/data di ingresso dei membri
+  di un'organizzazione ai suoi stessi membri, uníta con `auth.users`
+  (i client non possono interrogare `auth.users` direttamente).
+- `20260920183951` — modifica `handle_new_user()` aggiungendo una
+  guardia iniziale: se `raw_user_meta_data ->> 'invite_token'` è
+  presente, la funzione non crea più un'organizzazione personale per il
+  nuovo utente, perché la aggiungerà lui stesso a quella dell'invito
+  chiamando `accept_organization_invite` subito dopo la conferma email.
+- `20260920184643` — aggiunge la funzione `get_invite_preview`
+  (`SECURITY DEFINER`, **unica di questo gruppo concessa anche ad
+  `anon`**): dato solo il token, restituisce nome dell'organizzazione,
+  ruolo proposto e validità, senza richiedere autenticazione. Serve a
+  mostrare "Stai per unirti a: **Nome Azienda**" nella pagina di
+  registrazione prima che l'utente invitato abbia un account — nessun
+  dato sensibile esposto oltre al nome scelto dall'organizzazione
+  stessa, e il token è già il "segreto" del link di invito.
+
+**Limite v1 degli inviti**: gli inviti funzionano solo per chi non ha
+ancora nessun account IncassaPrima. Un utente che ha già una propria
+organizzazione (Free/Pro/Studio) non può accettare un invito a
+un'altra organizzazione: `accept_organization_invite` lo rifiuta con un
+errore esplicito lato server (non solo lato UI). Estendere il supporto
+a un vero multi-organizzazione (switcher tra organizzazioni di cui si è
+membri) è un lavoro futuro, non fatto in questa v1.
 
 **Modello Studio → aziende gestite**: un account Studio ha
 un'organizzazione "identità" (quella creata alla registrazione, con
