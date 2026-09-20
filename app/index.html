@@ -1138,9 +1138,9 @@
   >
     <div class="modalhead">
       <div>
-        <h2 id="studioTitle">Dashboard Studio</h2>
+        <h2 id="studioTitle">Le tue aziende</h2>
         <p class="hint">
-          Gestisci i clienti del tuo studio e le relative fatture.
+          Ogni azienda ha clienti e fatture separati. Aprine una per lavorarci.
         </p>
       </div>
 
@@ -1153,17 +1153,27 @@
     </div>
 
     <div class="studio-content" style="max-height:60vh;overflow-y:auto;padding:0 16px">
+      <div class="studio-toolbar" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input
+          id="studioNewCompanyName"
+          type="text"
+          placeholder="Nome nuova azienda"
+          style="flex:1;min-width:200px"
+        />
+        <button type="button" id="studioAddCompanyBtn" class="small">Aggiungi azienda</button>
+      </div>
+
       <div class="studio-toolbar" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <input
           id="studioSearch"
           type="text"
-          placeholder="Cerca cliente per nome"
+          placeholder="Cerca azienda per nome"
           style="flex:1;min-width:200px"
         />
       </div>
 
       <div id="studioClientsContent">
-        <p>Caricamento clienti dello studio…</p>
+        <p>Caricamento aziende…</p>
       </div>
     </div>
 
