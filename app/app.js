@@ -410,6 +410,76 @@ Cordiali saluti.`
     await loadOrganizationData(state.studioIdentityOrg);
   }
 
+  // Rinomina un'organizzazione (l'identità Studio o un'azienda gestita).
+  // Le RLS permettono già all'owner di aggiornare solo la colonna name,
+  // nessuna funzione server-side necessaria.
+  async function renameOrganization(organizationId, currentName) {
+    const input = window.prompt('Nuovo nome:', currentName);
+    if (input === null) return;
+
+    const trimmed = input.trim();
+    if (trimmed.length < 2) {
+      toast('Il nome deve avere almeno 2 caratteri.');
+      return;
+    }
+    if (trimmed === currentName) return;
+
+    const { error } = await state.supabase
+      .from('organizations')
+      .update({ name: trimmed })
+      .eq('id', organizationId);
+
+    if (error) {
+      toast(`Impossibile rinominare: ${error.message}`);
+      return;
+    }
+
+    if (state.studioIdentityOrg && state.studioIdentityOrg.id === organizationId) {
+      state.studioIdentityOrg.name = trimmed;
+    }
+    const company = state.studioCompanies.find((c) => c.id === organizationId);
+    if (company) company.name = trimmed;
+    if (state.organization && state.organization.id === organizationId) {
+      state.organization.name = trimmed;
+    }
+
+    renderStudio();
+    toast('Nome aggiornato.');
+  }
+
+  // Elimina definitivamente un'azienda gestita (clienti, fatture, storico
+  // compresi) tramite la funzione server-side dedicata: richiede di
+  // scrivere il nome esatto come conferma, non è mai possibile eliminare
+  // l'identità Studio da qui.
+  async function deleteManagedCompany(organizationId, name) {
+    const confirmation = window.prompt(
+      `Stai per eliminare definitivamente "${name}" con tutti i suoi clienti e fatture. L'operazione non è reversibile.\n\nScrivi il nome esatto dell'azienda per confermare:`
+    );
+    if (confirmation === null) return;
+    if (confirmation !== name) {
+      toast('Nome non corrispondente: eliminazione annullata.');
+      return;
+    }
+
+    const { error } = await state.supabase.rpc('delete_managed_company', {
+      company_id: organizationId
+    });
+
+    if (error) {
+      toast(`Impossibile eliminare l'azienda: ${error.message}`);
+      return;
+    }
+
+    if (state.organization && state.organization.id === organizationId) {
+      await loadOrganizationData(state.studioIdentityOrg);
+    }
+
+    await refreshStudioCompanies();
+    await loadStudioOverview();
+    renderStudio();
+    toast('Azienda eliminata.');
+  }
+
   // Ricarica solo l'elenco delle aziende gestite (dopo averne creata una),
   // senza toccare l'azienda eventualmente già aperta.
   async function refreshStudioCompanies() {
@@ -2450,6 +2520,7 @@ Cordiali saluti.`
         <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.own.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.own.overdueCents)}</b></div>
         <div class="customer-actions">
           <button type="button" class="small secondary" data-studio-company-op="open-own">Apri</button>
+          <button type="button" class="small secondary" data-studio-company-op="rename" data-studio-company-id="${state.studioIdentityOrg.id}" data-studio-company-name="${escapeHtml(state.studioIdentityOrg.name)}">Rinomina</button>
         </div>
       </article>`
       : '';
@@ -2467,6 +2538,8 @@ Cordiali saluti.`
             <div class="customer-metric"><span>Scaduto</span><b style="color:${companyMetrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(companyMetrics.overdueCents)}</b></div>
             <div class="customer-actions">
               <button type="button" class="small secondary" data-studio-company-op="open" data-studio-company-id="${company.id}">Apri</button>
+              <button type="button" class="small secondary" data-studio-company-op="rename" data-studio-company-id="${company.id}" data-studio-company-name="${escapeHtml(company.name)}">Rinomina</button>
+              <button type="button" class="small danger" data-studio-company-op="delete" data-studio-company-id="${company.id}" data-studio-company-name="${escapeHtml(company.name)}">Elimina</button>
             </div>
           </article>`;
     }).join('')
@@ -3415,6 +3488,10 @@ Cordiali saluti.`
         selectCompany(button.dataset.studioCompanyId);
       } else if (button.dataset.studioCompanyOp === 'open-own') {
         openOwnStudio();
+      } else if (button.dataset.studioCompanyOp === 'rename') {
+        renameOrganization(button.dataset.studioCompanyId, button.dataset.studioCompanyName);
+      } else if (button.dataset.studioCompanyOp === 'delete') {
+        deleteManagedCompany(button.dataset.studioCompanyId, button.dataset.studioCompanyName);
       }
     });
 

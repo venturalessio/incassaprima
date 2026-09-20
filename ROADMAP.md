@@ -44,8 +44,10 @@ sessioni di sviluppo.
 - **Multi-utente per organizzazione**: oggi `organization_members` non ha
   un modo per invitare colleghi oltre al proprietario creato alla
   registrazione — serve un flusso di invito (email + accettazione).
-- **Rinominare un'azienda/organizzazione dall'interfaccia**: la colonna
-  `organizations.name` è già aggiornabile lato DB (RLS lo permette agli
-  owner) ma manca l'UI per farlo.
-- **Eliminare un'azienda gestita** dallo switcher Studio: oggi possibile
-  solo intervenendo direttamente sul database.
+- ~~**Rinominare/eliminare un'azienda dall'interfaccia**~~ Fatto il
+  20/09/2026: dallo switcher Studio si può rinominare sia l'identità
+  Studio sia ogni azienda gestita (semplice UPDATE, le RLS lo
+  permettevano già), ed eliminare un'azienda gestita (clienti, fatture
+  e storico compresi) tramite la funzione server-side
+  `delete_managed_company`, che richiede di scrivere il nome esatto
+  come conferma e non permette mai di eliminare l'identità Studio.
