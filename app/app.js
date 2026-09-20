@@ -1233,9 +1233,13 @@ Cordiali saluti.`
   }
 
   function exportCsv() {
-    const source = state.session ? state.invoices : state.localInvoices.map(localToView);
+    if (!state.session) {
+      toast('Accedi al cloud per esportare le fatture in CSV. È una funzionalità del piano Pro.');
+      return;
+    }
+
     const header = ['cliente', 'numero_fattura', 'importo_euro', 'scadenza', 'email', 'stato'];
-    const rows = source.map((invoice) => [
+    const rows = state.invoices.map((invoice) => [
       invoice.customer_name || invoice.customer || '',
       invoice.invoice_number || invoice.number || '',
       invoice.amount_cents !== undefined ? (Number(invoice.amount_cents) / 100).toFixed(2) : Number(invoice.amount || 0).toFixed(2),
@@ -1253,9 +1257,7 @@ Cordiali saluti.`
   }
 
   function currentImportInvoiceSource() {
-    return state.session
-      ? state.invoices
-      : state.localInvoices.map(localToView);
+    return state.invoices;
   }
 
   function buildExistingImportKeys() {
@@ -1327,7 +1329,12 @@ Cordiali saluti.`
   async function importFile(file) {
     if (!file) return;
 
-    if (state.session && state.isStudioAccount && !state.organization) {
+    if (!state.session) {
+      toast('Accedi al cloud per importare fatture da file CSV o Excel. È una funzionalità del piano Pro.');
+      return;
+    }
+
+    if (state.isStudioAccount && !state.organization) {
       toast('Seleziona prima un\'azienda dalla dashboard Studio.');
       openStudio();
       return;
