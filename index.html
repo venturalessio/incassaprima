@@ -9,6 +9,19 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="styles.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="it_IT">
+  <meta property="og:url" content="https://venturalessio.github.io/incassaprima/">
+  <meta property="og:title" content="IncassaPrima — Tieni sotto controllo gli incassi">
+  <meta property="og:description" content="Scadenzario gratuito per controllare fatture, priorità e solleciti di pagamento. Sai sempre chi contattare oggi e prepari il sollecito in un clic.">
+  <meta property="og:image" content="https://venturalessio.github.io/incassaprima/icons/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="IncassaPrima — Tieni sotto controllo gli incassi">
+  <meta name="twitter:description" content="Scadenzario gratuito per controllare fatture, priorità e solleciti di pagamento.">
+  <meta name="twitter:image" content="https://venturalessio.github.io/incassaprima/icons/icon-512.png">
 </head>
 
 <body>
@@ -258,7 +271,7 @@
             <li>Scadenze e stati di pagamento</li>
             <li>Tre modelli di sollecito</li>
             <li>Importi in formato italiano</li>
-            <li>Import/export CSV</li>
+            <li>Import/export CSV ed Excel</li>
             <li>Dati salvati nel browser</li>
           </ul>
 
@@ -273,15 +286,109 @@
 
           <ul>
             <li>Backup cloud e accesso multi-dispositivo</li>
-            <li>Promemoria automatici via email</li>
-            <li>Storico di solleciti e risposte</li>
-            <li>Import Excel guidato</li>
-            <li>Dashboard clienti e ritardi</li>
+            <li>Anagrafica clienti con scaduto e da incassare</li>
+            <li>Regole di sollecito automatiche con coda di approvazione</li>
+            <li>Dashboard Analisi incassi: anzianità crediti e top debitori</li>
+            <li>Import guidato clienti da Excel, con gestione duplicati</li>
           </ul>
 
-          <a class="button button-light" href="mailto:ventura.alessio@gmail.com?subject=Voglio%20testare%20IncassaPrima%20Pro">
+          <a class="button button-light" href="#richiedi-accesso" data-plan="Pro">
             Voglio testare Pro
           </a>
+        </article>
+
+        <article class="plan-card studio-plan">
+          <div class="coming-soon">IN ARRIVO</div>
+          <p class="plan-name">Studio</p>
+          <p class="price">Contattaci <span>per il prezzo</span></p>
+          <p class="plan-description">Per commercialisti e studi che seguono più aziende.</p>
+
+          <ul>
+            <li>Tutte le funzionalità del piano Pro</li>
+            <li>Fatture dirette dello studio, separate dai clienti gestiti</li>
+            <li>Aziende gestite isolate, ognuna con clienti e fatture propri</li>
+            <li>Vista aggregata su tutte le aziende gestite</li>
+          </ul>
+
+          <a class="button button-outline-dark" href="#richiedi-accesso" data-plan="Studio">
+            Voglio testare Studio
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <section id="richiedi-accesso" class="request-section">
+      <div class="section-intro centered">
+        <p class="eyebrow">PRO E STUDIO SONO IN ARRIVO</p>
+        <h2>Lascia i tuoi dati, ti contattiamo noi per l'accesso in anteprima.</h2>
+        <p>Niente automatismi: rispondiamo di persona, di solito entro 1-2 giorni lavorativi.</p>
+      </div>
+
+      <form
+        class="request-form"
+        action="https://formspree.io/f/meaoaozp"
+        method="POST"
+      >
+        <input type="hidden" name="_subject" value="Nuova richiesta accesso IncassaPrima">
+
+        <div class="form-row">
+          <label>
+            Nome e cognome
+            <input type="text" name="nome" required>
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" required>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Azienda o studio
+            <input type="text" name="azienda">
+          </label>
+          <label>
+            Piano di interesse
+            <select name="piano" id="requestPlanSelect">
+              <option value="Pro">Pro</option>
+              <option value="Studio">Studio</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Messaggio (facoltativo)
+          <textarea name="messaggio" rows="3" placeholder="Quanti clienti o quante fatture gestisci oggi? Cosa ti serve di più?"></textarea>
+        </label>
+
+        <button type="submit" class="button">Invia richiesta</button>
+      </form>
+    </section>
+
+    <section class="social-proof-section">
+      <blockquote class="founder-quote">
+        <p>
+          “Ho creato IncassaPrima perché ero stanco di rincorrere pagamenti con
+          fogli Excel e promemoria scritti a mano — e perché nessuno strumento
+          che avevo provato mi diceva, in un colpo d’occhio, chi contattare
+          oggi. L’ho costruito prima di tutto per il mio studio: se risolve
+          anche il tuo problema, l’obiettivo è raggiunto.”
+        </p>
+        <footer><strong>Alessio Ventura</strong> · Fondatore di IncassaPrima</footer>
+      </blockquote>
+
+      <div class="trust-grid">
+        <article>
+          <div class="icon-box">🔒</div>
+          <p>I tuoi dati restano tuoi: cancellabili in ogni momento, nessuna rivendita a terzi.</p>
+        </article>
+        <article>
+          <div class="icon-box">💳</div>
+          <p>Nessuna carta di credito richiesta per iniziare.</p>
+        </article>
+        <article>
+          <div class="icon-box">🛠️</div>
+          <p>Costruito e mantenuto da chi lo usa ogni giorno per il proprio studio.</p>
         </article>
       </div>
     </section>
@@ -305,12 +412,17 @@
 
         <details>
           <summary>IncassaPrima invia automaticamente le email?</summary>
-          <p>No. Prepara il testo e può aprire il client di posta con oggetto e corpo già compilati. L’invio resta sotto il tuo controllo.</p>
+          <p>No. Prepara il testo e può aprire il client di posta con oggetto e corpo già compilati. Con il piano Pro, in base a regole che imposti tu (dopo quanti giorni di ritardo), vengono create in automatico delle bozze da approvare: l’invio finale resta comunque sempre sotto il tuo controllo.</p>
         </details>
 
         <details>
           <summary>Sostituisce la fatturazione elettronica o il gestionale?</summary>
           <p>No. È uno strumento per monitorare incassi e preparare solleciti. Non svolge contabilità, fatturazione elettronica o conservazione fiscale.</p>
+        </details>
+
+        <details>
+          <summary>Il piano Studio è adatto a me?</summary>
+          <p>Sì, se segui la contabilità o gli incassi di più aziende diverse — tipicamente un commercialista o uno studio. Ogni azienda resta isolata con propri clienti e fatture, più le tue fatture dirette e una vista aggregata su tutte insieme.</p>
         </details>
 
         <details>
@@ -348,6 +460,13 @@
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js");
     }
+
+    document.querySelectorAll('a[data-plan]').forEach((link) => {
+      link.addEventListener('click', () => {
+        const select = document.getElementById('requestPlanSelect');
+        if (select) select.value = link.dataset.plan;
+      });
+    });
   </script>
 </body>
 </html>
