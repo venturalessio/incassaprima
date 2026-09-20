@@ -24,10 +24,10 @@ sessioni di sviluppo.
   modal Piani in-app riscritti per riflettere esattamente le funzionalità
   reali di Free/Pro/Studio (aggiunta anche la card Studio, prima assente
   dalla landing pubblica).
-- **Blocco analytics/aging** in `app/app.js` (funzione intorno alle righe
-  3100-3180) ancora inline nel render, non estratto in `app/lib/` — buon
-  prossimo candidato per continuare il lavoro di modularizzazione/test
-  iniziato con `format.js`/`invoices.js`/`csv.js`.
+- ~~**Blocco analytics/aging**~~ Fatto il 20/09/2026: la logica di
+  calcolo (fasce di anzianità, top debitori) è stata estratta in
+  `app/lib/analytics.js` (`computeAnalytics`), con 5 nuovi test;
+  `renderAnalytics()` ora si occupa solo del rendering DOM.
 - **Leaked password protection** disabilitata su Supabase Auth: va
   attivata manualmente dalla dashboard (Authentication → Policies),
   nessun tool disponibile per farlo via API/MCP.
