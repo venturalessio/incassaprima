@@ -68,7 +68,8 @@ import {
     // ma su una o più aziende gestite (organizations.managed_by = identità).
     isStudioAccount: false,
     studioIdentityOrgId: null,
-    studioCompanies: []
+    studioCompanies: [],
+    studioMetrics: { totalOpenCents: 0, totalOverdueCents: 0, totalOverdueCount: 0, byCompany: {} }
   };
 
   const models = {
@@ -411,6 +412,59 @@ Cordiali saluti.`
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  // Calcola i totali "da incassare"/"scaduto" per ogni azienda gestita e
+  // il totale aggregato su tutte insieme, in un'unica query (le RLS
+  // esistenti restituiscono solo le fatture delle aziende di cui l'utente
+  // è membro, quindi nessun controllo aggiuntivo è necessario qui).
+  async function loadStudioOverview() {
+    const companyIds = state.studioCompanies.map((c) => c.id);
+
+    const byCompany = {};
+    companyIds.forEach((id) => {
+      byCompany[id] = { openCents: 0, overdueCents: 0, overdueCount: 0 };
+    });
+
+    if (!companyIds.length) {
+      state.studioMetrics = { totalOpenCents: 0, totalOverdueCents: 0, totalOverdueCount: 0, byCompany };
+      return;
+    }
+
+    const { data: invoices, error } = await state.supabase
+      .from('invoices')
+      .select('organization_id, amount_cents, status, due_date')
+      .in('organization_id', companyIds);
+
+    if (error) {
+      console.error('Errore caricamento riepilogo Studio:', error.message);
+      return;
+    }
+
+    let totalOpenCents = 0;
+    let totalOverdueCents = 0;
+    let totalOverdueCount = 0;
+
+    (invoices || []).forEach((invoice) => {
+      const status = invoiceStatus(invoice);
+      if (['paid', 'disputed', 'paused'].includes(status)) return;
+
+      const bucket = byCompany[invoice.organization_id];
+      if (!bucket) return;
+
+      const cents = Number(invoice.amount_cents || 0);
+      bucket.openCents += cents;
+      totalOpenCents += cents;
+
+      if (status === 'overdue') {
+        bucket.overdueCents += cents;
+        bucket.overdueCount += 1;
+        totalOverdueCents += cents;
+        totalOverdueCount += 1;
+      }
+    });
+
+    state.studioMetrics = { totalOpenCents, totalOverdueCents, totalOverdueCount, byCompany };
+  }
+
   async function createManagedCompany(name) {
     const trimmed = String(name || '').trim();
     if (trimmed.length < 2) {
@@ -428,6 +482,7 @@ Cordiali saluti.`
     }
 
     await refreshStudioCompanies();
+    await loadStudioOverview();
     renderStudio();
     toast('Azienda creata.');
     return newOrgId;
@@ -2331,24 +2386,46 @@ Cordiali saluti.`
       ? `<p class="smallhint" style="margin-bottom:12px">Azienda aperta ora: <strong>${escapeHtml(state.organization.name)}</strong></p>`
       : '';
 
+    const metrics = state.studioMetrics;
+    const summary = state.studioCompanies.length
+      ? `
+      <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+        <div class="stat">
+          <span>Da incassare su tutte le aziende</span>
+          <strong>${moneyFromCents(metrics.totalOpenCents)}</strong>
+        </div>
+        <div class="stat">
+          <span>Scaduto su tutte le aziende</span>
+          <strong style="color:${metrics.totalOverdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.totalOverdueCents)}</strong>
+          <small class="smallhint">${metrics.totalOverdueCount} fattur${metrics.totalOverdueCount === 1 ? 'a scaduta' : 'e scadute'}</small>
+        </div>
+      </div>`
+      : '';
+
     if (!companies.length) {
-      $('studioClientsContent').innerHTML = `${activeNotice}<p>Nessuna azienda ancora aggiunta. Usa il modulo qui sopra per aggiungerne una.</p>`;
+      $('studioClientsContent').innerHTML = `${summary}${activeNotice}<p>Nessuna azienda ancora aggiunta. Usa il modulo qui sopra per aggiungerne una.</p>`;
       return;
     }
 
     $('studioClientsContent').innerHTML = `
+    ${summary}
     ${activeNotice}
     <div class="customer-list">
-      ${companies.map((company) => `
+      ${companies.map((company) => {
+      const companyMetrics = metrics.byCompany[company.id] || { openCents: 0, overdueCents: 0 };
+      return `
           <article class="customer-row">
             <div>
               <strong>${escapeHtml(company.name)}</strong>
               ${company.id === (state.organization && state.organization.id) ? '<small style="color:#047857;font-weight:700">Aperta ora</small>' : ''}
             </div>
+            <div class="customer-metric"><span>Da incassare</span><b>${moneyFromCents(companyMetrics.openCents)}</b></div>
+            <div class="customer-metric"><span>Scaduto</span><b style="color:${companyMetrics.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(companyMetrics.overdueCents)}</b></div>
             <div class="customer-actions">
               <button type="button" class="small secondary" data-studio-company-op="open" data-studio-company-id="${company.id}">Apri</button>
             </div>
-          </article>`).join('')}
+          </article>`;
+    }).join('')}
     </div>`;
   }
 
@@ -2373,6 +2450,10 @@ Cordiali saluti.`
   function openStudio() {
     $('studioBack').style.display = 'flex';
     renderStudio();
+
+    // Aggiorna i totali in background: mostra subito i dati già in
+    // memoria (se presenti) e li rinfresca appena arrivano quelli veri.
+    loadStudioOverview().then(renderStudio);
   }
 
   function closeStudio() {
