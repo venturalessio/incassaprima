@@ -33,8 +33,6 @@
     localInvoices: []
   };
 
-  console.log('App initialized');
-
   const models = {
     courtesy: {
       label: '1. Promemoria cortese',
@@ -333,17 +331,14 @@ Cordiali saluti.`
   }
 
   function updateFeaturesByPlan() {
-  const plan = getOrganizationPlan();
-  console.log('updateFeaturesByPlan chiamata, plan:', plan);
+    const plan = getOrganizationPlan();
 
-  // Dashboard Studio: visibile solo per piano 'studio'
-  const studioBtn = $('studioBtn');
-  console.log('studioBtn:', studioBtn);
-  if (studioBtn) {
-    studioBtn.style.display = (plan === 'studio') ? 'inline-block' : 'none';
-    console.log('studioBtn.display impostato a:', studioBtn.style.display);
+    // Dashboard Studio: visibile solo per piano 'studio'
+    const studioBtn = $('studioBtn');
+    if (studioBtn) {
+      studioBtn.style.display = (plan === 'studio') ? 'inline-block' : 'none';
+    }
   }
-}
 
   async function initializeSupabase() {
     if (!configured()) {
@@ -1096,7 +1091,16 @@ Cordiali saluti.`
       invoice.customer_email || invoice.email || '',
       invoice.status || (invoice.paid ? 'paid' : 'open')
     ]);
-    const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const sanitizeCsvValue = (value) => {
+      let text = String(value ?? '');
+      // Neutralizza i valori che Excel/Sheets interpreterebbero come
+      // formule (CSV/formula injection) prefissandoli con un apice.
+      if (/^[=+\-@\t\r]/.test(text)) {
+        text = `'${text}`;
+      }
+      return text;
+    };
+    const csv = [header, ...rows].map((row) => row.map((value) => `"${sanitizeCsvValue(value).replace(/"/g, '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
