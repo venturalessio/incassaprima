@@ -165,7 +165,15 @@ dalla Dashboard Supabase (Project Settings → Edge Functions →
   per i test). **Richiede un dominio proprio verificato su Resend
   (record DNS SPF/DKIM) prima di poter inviare a clienti reali** — una
   volta verificato, impostare qui un mittente su quel dominio (es.
-  `IncassaPrima <promemoria@incassaprima.it>`).
+  `IncassaPrima <promemoria@incassaprima.it>`). **Quando aggiungi il
+  dominio su Resend, scegli la sending region UE** (Irlanda o
+  Francoforte, https://resend.com/docs/dashboard/domains/regions):
+  dispaccia le email dall'UE invece che dagli USA, coerente con dove
+  vivono i destinatari. Non equivale a una piena "EU data residency"
+  (metadati/log dell'account restano comunque su infrastruttura Resend
+  negli USA), ma è comunque la scelta preferibile a parità di sforzo —
+  vedi anche `privacy.html` per il quadro completo sui trasferimenti
+  extra-UE.
 
 Il toggle "Invia i solleciti automaticamente via email" nella UI
 "Regole sollecito" resta a disposizione di ogni organizzazione ma va

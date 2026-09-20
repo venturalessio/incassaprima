@@ -91,3 +91,11 @@ sessioni di sviluppo.
   da sola" richiede un servizio OCR/AI a pagamento (Google Vision,
   Mindee, un modello vision). Da valutare solo dopo le voci sopra, che
   portano più valore diretto per lo sforzo richiesto.
+- **Cancellazione/esportazione dati self-service** (bassa priorità).
+  Oggi (vedi `privacy.html`) la cancellazione account e l'esportazione
+  dei propri dati sono gestite manualmente scrivendo un'email — adeguato
+  ai volumi attuali (pochi account di test) e comunque conforme ai
+  termini di legge (risposta entro 30 giorni). Da costruire come
+  funzionalità self-service (pulsante "Elimina account"/"Esporta i miei
+  dati" nell'app, con relative funzioni server-side) quando il numero di
+  utenti reali renderà insostenibile il processo manuale.
