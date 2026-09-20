@@ -12,25 +12,47 @@
     <h1 style="font-family:Fraunces,Georgia,serif;font-size:42px">Informativa privacy</h1>
     <p><strong>Ultimo aggiornamento: 20 settembre 2026.</strong></p>
 
+    <h2>Chi tratta i tuoi dati</h2>
+    <p>IncassaPrima è un progetto di Alessio Ventura. Per qualunque domanda sui tuoi dati puoi scrivere a <code>ventura.alessio@gmail.com</code>.</p>
+
     <h2>Versione gratuita locale</h2>
     <p>IncassaPrima, nella versione gratuita senza account, salva nel browser dell'utente le informazioni inserite nello scadenzario, ad esempio nominativi dei clienti, riferimenti fattura, importi e date. Questi dati non vengono inviati né conservati dal gestore del sito: rimangono nel localStorage del browser del dispositivo utilizzato.</p>
 
-    <h2>Versione Pro (account e cloud)</h2>
+    <h2>Versione Pro e Studio (account e cloud)</h2>
     <p>Creando un account, IncassaPrima raccoglie l'indirizzo email e la password (gestita in forma cifrata) per l'autenticazione, e salva su database cloud i dati che inserisci per gestire i tuoi incassi: nome dell'organizzazione, anagrafica clienti (nome, email, PEC, telefono, note), fatture (numero, importo, date, stato) e lo storico dei solleciti preparati. Questi dati sono visibili solo a chi ha accesso al tuo account e servono esclusivamente a far funzionare lo scadenzario cloud e la sincronizzazione multi-dispositivo.</p>
-    <p>Il database è ospitato da <strong>Supabase</strong> (infrastruttura su AWS, regione eu-west-1, Irlanda), che agisce come responsabile del trattamento (sub-processor) per conto di IncassaPrima. I dati dei tuoi clienti che inserisci nell'app sono quindi trattati per tuo conto, in qualità di titolare del trattamento verso i tuoi clienti.</p>
+    <p>Se il tuo account è di tipo <strong>Studio</strong>, puoi gestire più aziende clienti separate tra loro (ciascuna con propria anagrafica e fatture, isolate dalle altre), oltre a eventuali fatture dirette della tua organizzazione.</p>
+    <p>Se usi la funzionalità <strong>Team</strong> per invitare un collaboratore nella tua organizzazione, il suo indirizzo email e il ruolo assegnato diventano visibili agli altri membri della stessa organizzazione: è necessario per permettere la collaborazione, e riguarda solo persone che hai invitato tu esplicitamente.</p>
+    <p><strong>Chi è il titolare dei dati dei tuoi clienti.</strong> Per i dati che inserisci nell'app riguardanti i tuoi clienti (nome, email, importi dovuti, ecc.), il titolare del trattamento sei tu: sei tu a decidere quali dati raccogliere e per quale scopo verso i tuoi clienti, ed è tuo compito informarli adeguatamente (ad esempio con una tua informativa privacy). IncassaPrima e i fornitori elencati sotto agiscono solo come responsabili del trattamento per tuo conto: trattano quei dati seguendo le tue istruzioni — cioè per far funzionare l'app che usi — e non li utilizzano per scopi propri.</p>
+
+    <h2>Fornitori che trattano i dati per nostro conto</h2>
+    <ul>
+      <li><strong>Supabase</strong> (infrastruttura su AWS, regione eu-west-1, Irlanda): ospita il database cloud e gestisce l'autenticazione degli account.</li>
+      <li><strong>Formspree</strong> (Stati Uniti): elabora i dati inviati tramite il modulo "Richiedi accesso" della landing page e li recapita alla nostra casella email.</li>
+      <li><strong>Resend</strong> (Stati Uniti): vedi la sezione dedicata ai promemoria automatici qui sotto — non ancora attivo per nessun account alla data di questo aggiornamento.</li>
+    </ul>
+    <p>Formspree e Resend hanno sede negli Stati Uniti: per il trasferimento dei dati al di fuori dello Spazio Economico Europeo ci affidiamo alle garanzie previste dai loro stessi contratti di trattamento dati (clausole contrattuali standard o meccanismi equivalenti), come previsto dalla normativa.</p>
+
+    <h2>Promemoria automatici via email</h2>
+    <p>Stiamo costruendo una funzionalità opzionale che, solo se la attivi esplicitamente dalle impostazioni "Regole sollecito" della tua organizzazione, invierà i solleciti ai tuoi clienti via email in automatico, tramite il servizio <strong>Resend</strong>. Alla data di questo aggiornamento la funzionalità non è ancora disponibile per nessun cliente: nessuna email viene inviata automaticamente per tuo conto finché non completeremo l'attivazione, e comunque solo per le organizzazioni che la richiedono espressamente contattandoci.</p>
 
     <h2>Dati raccolti dal sito</h2>
-    <p>La landing page pubblica non richiede account e non usa cookie di profilazione. Se contatti il progetto tramite email, il tuo indirizzo e il contenuto del messaggio saranno utilizzati esclusivamente per rispondere alla richiesta. L'app cloud richiede invece email e password per creare un account, come descritto sopra.</p>
+    <p>La landing page pubblica non richiede account e non usa cookie di profilazione o strumenti di analisi/tracciamento di terze parti. Se compili il modulo "Richiedi accesso", i dati inseriti (nome, email, azienda, messaggio) vengono elaborati tramite Formspree e usati esclusivamente per risponderti. Se ci contatti direttamente via email, il tuo indirizzo e il contenuto del messaggio saranno utilizzati esclusivamente per rispondere alla richiesta. L'app cloud richiede invece email e password per creare un account, come descritto sopra.</p>
 
     <h2>Conservazione e cancellazione</h2>
     <p>Nella versione locale puoi cancellare i dati dall'app tramite "Azzera dati", oppure cancellando i dati di navigazione del browser: non sono recuperabili dopo questa operazione.</p>
-    <p>Nella versione cloud i dati restano associati al tuo account finché non ne richiedi la cancellazione scrivendo a <code>ventura.alessio@gmail.com</code>: l'account, l'organizzazione e tutti i dati collegati (clienti, fatture, solleciti) vengono eliminati definitivamente entro 30 giorni dalla richiesta.</p>
+    <p>Nella versione cloud i dati restano associati al tuo account finché non ne richiedi la cancellazione scrivendo a <code>ventura.alessio@gmail.com</code>: l'account, l'organizzazione e tutti i dati collegati (clienti, fatture, solleciti) vengono eliminati definitivamente entro 30 giorni dalla richiesta. Oggi questo processo è gestito manualmente: alla nostra scala attuale garantiamo comunque una risposta entro i termini di legge.</p>
 
     <h2>I tuoi diritti</h2>
     <p>Puoi chiedere in qualsiasi momento accesso, rettifica, portabilità o cancellazione dei tuoi dati, o dei dati dei tuoi clienti che hai inserito nell'app, scrivendo a <code>ventura.alessio@gmail.com</code>.</p>
 
+    <h2>Sicurezza</h2>
+    <p>I dati cloud sono protetti da regole di accesso (Row Level Security) che isolano i dati di ogni organizzazione da quelli di tutte le altre, verificate e testate direttamente sul database. Le password sono gestite da Supabase in forma cifrata; non abbiamo mai accesso alla password in chiaro.</p>
+
     <h2>Limitazioni</h2>
-    <p>IncassaPrima non è un gestionale fiscale, non effettua fatturazione elettronica, non gestisce conservazione sostitutiva e non invia solleciti automaticamente: prepara solo il testo, l'invio resta sempre sotto il tuo controllo.</p>
+    <p>IncassaPrima non è un gestionale fiscale, non effettua fatturazione elettronica e non gestisce conservazione sostitutiva. Per i solleciti: prepara sempre il testo delle comunicazioni, e li invia automaticamente via email solo se attivi esplicitamente questa opzione (vedi "Promemoria automatici via email" sopra) — altrimenti l'invio resta sempre sotto il tuo controllo diretto.</p>
+
+    <h2>Modifiche a questa informativa</h2>
+    <p>Aggiorniamo questa pagina quando cambiano le funzionalità del servizio o i fornitori coinvolti nel trattamento; la data in cima alla pagina riflette l'ultimo aggiornamento.</p>
 
     <h2>Contatti</h2>
     <p><code>ventura.alessio@gmail.com</code></p>
