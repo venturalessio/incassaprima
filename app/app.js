@@ -35,6 +35,8 @@ import {
   buildCsv
 } from './lib/csv.js';
 
+import { computeAnalytics } from './lib/analytics.js';
+
 (function () {
   'use strict';
 
@@ -3121,63 +3123,12 @@ Cordiali saluti.`
       ? state.invoices
       : state.localInvoices.map(localToView);
 
-    const overdueInvoices = invoices.filter(
-      (invoice) => invoiceStatus(invoice) === 'overdue'
-    );
-
-    let overdueCents = 0;
-
-    const aging = {
-      from0to30: { cents: 0, count: 0 },
-      from31to60: { cents: 0, count: 0 },
-      from61to90: { cents: 0, count: 0 },
-      over90: { cents: 0, count: 0 }
-    };
-
-    const debtors = new Map();
-
-    overdueInvoices.forEach((invoice) => {
-      const cents = invoice.amount_cents !== undefined
-        ? Number(invoice.amount_cents || 0)
-        : Math.round(Number(invoice.amount || 0) * 100);
-
-      const days = diffDays(invoice);
-      const customer = invoice.customer_name || invoice.customer || 'Cliente';
-
-      overdueCents += cents;
-
-      if (days <= 30) {
-        aging.from0to30.cents += cents;
-        aging.from0to30.count += 1;
-      } else if (days <= 60) {
-        aging.from31to60.cents += cents;
-        aging.from31to60.count += 1;
-      } else if (days <= 90) {
-        aging.from61to90.cents += cents;
-        aging.from61to90.count += 1;
-      } else {
-        aging.over90.cents += cents;
-        aging.over90.count += 1;
-      }
-
-      const current = debtors.get(customer) || {
-        name: customer,
-        cents: 0,
-        count: 0,
-        oldestDays: 0
-      };
-
-      current.cents += cents;
-      current.count += 1;
-      current.oldestDays = Math.max(current.oldestDays, days);
-
-      debtors.set(customer, current);
-    });
+    const { overdueCount, overdueCents, aging, topDebtors } = computeAnalytics(invoices);
 
     $('analyticsOverdueTotal').textContent = moneyFromCents(overdueCents);
 
     $('analyticsOverdueCount').textContent =
-      `${overdueInvoices.length} fattur${overdueInvoices.length === 1 ? 'a scaduta' : 'e scadute'
+      `${overdueCount} fattur${overdueCount === 1 ? 'a scaduta' : 'e scadute'
       }`;
 
     $('aging0to30').textContent = moneyFromCents(aging.from0to30.cents);
@@ -3199,10 +3150,6 @@ Cordiali saluti.`
     $('agingOver90Count').textContent =
       `${aging.over90.count} fattur${aging.over90.count === 1 ? 'a' : 'e'
       }`;
-
-    const topDebtors = [...debtors.values()]
-      .sort((a, b) => b.cents - a.cents)
-      .slice(0, 10);
 
     if (!topDebtors.length) {
       $('topDebtorsContent').innerHTML = `
