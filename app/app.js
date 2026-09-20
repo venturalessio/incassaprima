@@ -63,13 +63,23 @@ import {
 
     localInvoices: [],
 
-    // Modalità Studio: un account Studio non lavora mai direttamente
-    // sulla propria organizzazione "identità" (creata alla registrazione),
-    // ma su una o più aziende gestite (organizations.managed_by = identità).
+    // Modalità Studio: la propria organizzazione "identità" (creata alla
+    // registrazione) è l'area di lavoro predefinita, per le fatture dirette
+    // dello studio — esattamente come per un utente Pro. Lo switcher
+    // permette inoltre di entrare in una o più aziende gestite
+    // (organizations.managed_by = identità), isolate tra loro e
+    // dall'identità stessa.
     isStudioAccount: false,
     studioIdentityOrgId: null,
+    studioIdentityOrg: null,
     studioCompanies: [],
-    studioMetrics: { totalOpenCents: 0, totalOverdueCents: 0, totalOverdueCount: 0, byCompany: {} }
+    studioMetrics: {
+      totalOpenCents: 0,
+      totalOverdueCents: 0,
+      totalOverdueCount: 0,
+      byCompany: {},
+      own: { openCents: 0, overdueCents: 0, overdueCount: 0 }
+    }
   };
 
   const models = {
@@ -310,20 +320,19 @@ Cordiali saluti.`
     );
 
     if (identityMembership) {
-      // Account Studio: l'organizzazione "identità" non ospita mai dati
-      // propri, serve solo a qualificare il piano. Le aziende gestite sono
-      // le altre organizzazioni collegate ad essa tramite managed_by.
+      // Account Studio: l'organizzazione "identità" è anche l'area di
+      // lavoro predefinita (lo studio ha le sue fatture dirette, come un
+      // utente Pro). Le aziende gestite sono le altre organizzazioni
+      // collegate ad essa tramite managed_by, raggiungibili dallo switcher.
       state.isStudioAccount = true;
       state.studioIdentityOrgId = identityMembership.organization_id;
+      state.studioIdentityOrg = identityMembership.organizations;
       state.studioCompanies = memberships
         .filter((m) => m.organizations && m.organizations.managed_by === state.studioIdentityOrgId)
         .map((m) => m.organizations)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      state.organization = null;
-      updateAccountUi();
-      render();
-      openStudio();
+      await loadOrganizationData(state.studioIdentityOrg);
       return;
     }
 
@@ -391,6 +400,16 @@ Cordiali saluti.`
     await loadOrganizationData(company);
   }
 
+  // Torna alle fatture dirette dello Studio (la propria organizzazione
+  // identità), dopo essere stati dentro un'azienda gestita.
+  async function openOwnStudio() {
+    if (!state.studioIdentityOrg) return;
+
+    closeStudio();
+    setStatus(`Cloud attivo · ${state.studioIdentityOrg.name}`, 'success');
+    await loadOrganizationData(state.studioIdentityOrg);
+  }
+
   // Ricarica solo l'elenco delle aziende gestite (dopo averne creata una),
   // senza toccare l'azienda eventualmente già aperta.
   async function refreshStudioCompanies() {
@@ -412,27 +431,32 @@ Cordiali saluti.`
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // Calcola i totali "da incassare"/"scaduto" per ogni azienda gestita e
-  // il totale aggregato su tutte insieme, in un'unica query (le RLS
-  // esistenti restituiscono solo le fatture delle aziende di cui l'utente
-  // è membro, quindi nessun controllo aggiuntivo è necessario qui).
+  // Calcola i totali "da incassare"/"scaduto" per ogni azienda gestita, il
+  // totale aggregato su tutte insieme e quello delle fatture dirette dello
+  // Studio, in un'unica query (le RLS esistenti restituiscono solo le
+  // fatture delle organizzazioni di cui l'utente è membro, quindi nessun
+  // controllo aggiuntivo è necessario qui). Le fatture dirette dello
+  // Studio non entrano nel totale aggregato "aziende gestite": sono
+  // mostrate a parte, in `own`.
   async function loadStudioOverview() {
     const companyIds = state.studioCompanies.map((c) => c.id);
+    const allIds = state.studioIdentityOrgId ? [...companyIds, state.studioIdentityOrgId] : companyIds;
 
     const byCompany = {};
     companyIds.forEach((id) => {
       byCompany[id] = { openCents: 0, overdueCents: 0, overdueCount: 0 };
     });
+    const own = { openCents: 0, overdueCents: 0, overdueCount: 0 };
 
-    if (!companyIds.length) {
-      state.studioMetrics = { totalOpenCents: 0, totalOverdueCents: 0, totalOverdueCount: 0, byCompany };
+    if (!allIds.length) {
+      state.studioMetrics = { totalOpenCents: 0, totalOverdueCents: 0, totalOverdueCount: 0, byCompany, own };
       return;
     }
 
     const { data: invoices, error } = await state.supabase
       .from('invoices')
       .select('organization_id, amount_cents, status, due_date')
-      .in('organization_id', companyIds);
+      .in('organization_id', allIds);
 
     if (error) {
       console.error('Errore caricamento riepilogo Studio:', error.message);
@@ -447,10 +471,20 @@ Cordiali saluti.`
       const status = invoiceStatus(invoice);
       if (['paid', 'disputed', 'paused'].includes(status)) return;
 
+      const cents = Number(invoice.amount_cents || 0);
+
+      if (invoice.organization_id === state.studioIdentityOrgId) {
+        own.openCents += cents;
+        if (status === 'overdue') {
+          own.overdueCents += cents;
+          own.overdueCount += 1;
+        }
+        return;
+      }
+
       const bucket = byCompany[invoice.organization_id];
       if (!bucket) return;
 
-      const cents = Number(invoice.amount_cents || 0);
       bucket.openCents += cents;
       totalOpenCents += cents;
 
@@ -462,7 +496,7 @@ Cordiali saluti.`
       }
     });
 
-    state.studioMetrics = { totalOpenCents, totalOverdueCents, totalOverdueCount, byCompany };
+    state.studioMetrics = { totalOpenCents, totalOverdueCents, totalOverdueCount, byCompany, own };
   }
 
   async function createManagedCompany(name) {
@@ -1105,6 +1139,7 @@ Cordiali saluti.`
     state.activeScheduledReminder = null;
     state.isStudioAccount = false;
     state.studioIdentityOrgId = null;
+    state.studioIdentityOrg = null;
     state.studioCompanies = [];
     updateAccountUi();
     updateApprovalBadge();
@@ -2383,7 +2418,7 @@ Cordiali saluti.`
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const activeNotice = state.organization
-      ? `<p class="smallhint" style="margin-bottom:12px">Azienda aperta ora: <strong>${escapeHtml(state.organization.name)}</strong></p>`
+      ? `<p class="smallhint" style="margin-bottom:12px">Stai lavorando su: <strong>${escapeHtml(state.organization.name)}</strong></p>`
       : '';
 
     const metrics = state.studioMetrics;
@@ -2391,27 +2426,36 @@ Cordiali saluti.`
       ? `
       <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
         <div class="stat">
-          <span>Da incassare su tutte le aziende</span>
+          <span>Da incassare su tutte le aziende gestite</span>
           <strong>${moneyFromCents(metrics.totalOpenCents)}</strong>
         </div>
         <div class="stat">
-          <span>Scaduto su tutte le aziende</span>
+          <span>Scaduto su tutte le aziende gestite</span>
           <strong style="color:${metrics.totalOverdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.totalOverdueCents)}</strong>
           <small class="smallhint">${metrics.totalOverdueCount} fattur${metrics.totalOverdueCount === 1 ? 'a scaduta' : 'e scadute'}</small>
         </div>
       </div>`
       : '';
 
-    if (!companies.length) {
-      $('studioClientsContent').innerHTML = `${summary}${activeNotice}<p>Nessuna azienda ancora aggiunta. Usa il modulo qui sopra per aggiungerne una.</p>`;
-      return;
-    }
+    const ownIsActive = Boolean(state.organization && state.organization.id === state.studioIdentityOrgId);
+    const ownRow = state.studioIdentityOrg
+      ? `
+      <article class="customer-row" style="border-color:#c7d2fe">
+        <div>
+          <strong>${escapeHtml(state.studioIdentityOrg.name)}</strong>
+          <small>Le tue fatture dirette</small>
+          ${ownIsActive ? '<small style="color:#047857;font-weight:700">Aperta ora</small>' : ''}
+        </div>
+        <div class="customer-metric"><span>Da incassare</span><b>${moneyFromCents(metrics.own.openCents)}</b></div>
+        <div class="customer-metric"><span>Scaduto</span><b style="color:${metrics.own.overdueCents ? '#b91c1c' : '#162033'}">${moneyFromCents(metrics.own.overdueCents)}</b></div>
+        <div class="customer-actions">
+          <button type="button" class="small secondary" data-studio-company-op="open-own">Apri</button>
+        </div>
+      </article>`
+      : '';
 
-    $('studioClientsContent').innerHTML = `
-    ${summary}
-    ${activeNotice}
-    <div class="customer-list">
-      ${companies.map((company) => {
+    const companiesList = companies.length
+      ? companies.map((company) => {
       const companyMetrics = metrics.byCompany[company.id] || { openCents: 0, overdueCents: 0 };
       return `
           <article class="customer-row">
@@ -2425,7 +2469,18 @@ Cordiali saluti.`
               <button type="button" class="small secondary" data-studio-company-op="open" data-studio-company-id="${company.id}">Apri</button>
             </div>
           </article>`;
-    }).join('')}
+    }).join('')
+      : '<p>Nessuna azienda gestita ancora aggiunta. Usa il modulo qui sopra per aggiungerne una.</p>';
+
+    $('studioClientsContent').innerHTML = `
+    ${summary}
+    ${activeNotice}
+    <div class="customer-list">
+      ${ownRow}
+    </div>
+    <p class="smallhint" style="margin:16px 0 8px">Aziende gestite</p>
+    <div class="customer-list">
+      ${companiesList}
     </div>`;
   }
 
@@ -3358,6 +3413,8 @@ Cordiali saluti.`
 
       if (button.dataset.studioCompanyOp === 'open') {
         selectCompany(button.dataset.studioCompanyId);
+      } else if (button.dataset.studioCompanyOp === 'open-own') {
+        openOwnStudio();
       }
     });
 
