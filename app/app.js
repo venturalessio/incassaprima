@@ -4,6 +4,37 @@
   2) Non inserire mai una chiave sb_secret_ o service_role in questo file.
 */
 
+import {
+  today,
+  moneyFromCents,
+  money,
+  dateIt,
+  escapeHtml,
+  parseItalianAmount,
+  parseDateOnly
+} from './lib/format.js';
+
+import {
+  diffDays,
+  invoiceStatus,
+  statusLabel,
+  recommendedModel,
+  recommendationText,
+  fillTemplate
+} from './lib/invoices.js';
+
+import {
+  normalizeCsvHeader,
+  detectCsvDelimiter,
+  parseCsvText,
+  normalizeImportedStatus,
+  normalizeImportedDate,
+  importKey,
+  csvValueByAliases,
+  formatImportProblems,
+  buildCsv
+} from './lib/csv.js';
+
 (function () {
   'use strict';
 
@@ -84,60 +115,6 @@ Cordiali saluti.`
     return state.organization.plan;
   }
 
-  function today() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  function moneyFromCents(cents) {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(Number(cents || 0) / 100);
-  }
-
-  function money(value) {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(Number(value || 0));
-  }
-
-  function dateIt(value) {
-    if (!value) return '—';
-    const parts = value.split('-');
-    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value;
-  }
-
-  function escapeHtml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function parseItalianAmount(value) {
-    let s = String(value || '').trim().replace(/\s/g, '').replace(/€/g, '');
-    if (!s) return NaN;
-
-    const comma = s.lastIndexOf(',');
-    const dot = s.lastIndexOf('.');
-
-    if (comma > -1) {
-      s = s.replace(/\./g, '').replace(',', '.');
-    } else if (dot > -1) {
-      const decimals = s.slice(dot + 1);
-      if (decimals.length === 3) s = s.replace(/\./g, '');
-      else s = s.replace(/,/g, '');
-    } else {
-      s = s.replace(/,/g, '');
-    }
-
-    return Number(s);
-  }
-
   function toast(message, persistent = false) {
     const el = $('toast');
     if (!el) return;
@@ -174,53 +151,6 @@ Cordiali saluti.`
     el.className = `sync-status ${type}`;
   }
 
-  function parseDateOnly(value) {
-    const [year, month, day] = String(value || '')
-      .slice(0, 10)
-      .split('-')
-      .map(Number);
-
-    if (!year || !month || !day) {
-      return null;
-    }
-
-    return new Date(year, month - 1, day);
-  }
-
-  function diffDays(invoice) {
-    const due = parseDateOnly(invoice.due_date || invoice.due);
-    const currentDay = parseDateOnly(today());
-
-    if (!due || !currentDay) {
-      return 0;
-    }
-
-    return Math.floor((currentDay - due) / 86400000);
-  }
-
-  function invoiceStatus(invoice) {
-    const rawStatus = invoice.status || (invoice.paid ? 'paid' : 'open');
-    if (rawStatus === 'paid') return 'paid';
-    if (rawStatus === 'promised') return 'promised';
-    if (rawStatus === 'disputed') return 'disputed';
-    if (rawStatus === 'paused') return 'paused';
-    const days = diffDays(invoice);
-    if (days > 0) return 'overdue';
-    if (days >= -7) return 'due';
-    return 'upcoming';
-  }
-
-  function statusLabel(status) {
-    return {
-      paid: 'Pagata',
-      promised: 'Promessa di pagamento',
-      disputed: 'Contestata',
-      paused: 'Sospesa',
-      overdue: 'Scaduta',
-      due: 'Entro 7 giorni',
-      upcoming: 'Da incassare'
-    }[status] || status;
-  }
   function getCustomerForInvoice(invoice) {
     if (!invoice || !invoice.customer_id) return null;
 
@@ -257,39 +187,6 @@ Cordiali saluti.`
       )
     );
   }
-  function recommendedModel(invoice) {
-    const days = diffDays(invoice);
-    if (days <= 2) return 'courtesy';
-    if (days <= 14) return 'first';
-    return 'second';
-  }
-
-  function recommendationText(invoice) {
-    const days = diffDays(invoice);
-    if (days < 0) return `Mancano ${Math.abs(days)} giorni alla scadenza: consigliato il promemoria cortese.`;
-    if (days === 0) return 'La fattura scade oggi: consigliato il promemoria cortese.';
-    if (days <= 2) return `La fattura è scaduta da ${days} giorno${days === 1 ? '' : 'i'}: consigliato il promemoria cortese.`;
-    if (days <= 14) return `La fattura è scaduta da ${days} giorni: consigliato il primo sollecito.`;
-    return `La fattura è scaduta da ${days} giorni: consigliato il secondo sollecito.`;
-  }
-
-  function fillTemplate(text, invoice) {
-    const customer = invoice.customer_name || invoice.customer || 'Cliente';
-    const number = invoice.invoice_number || invoice.number || '—';
-    const amount = invoice.amount_cents !== undefined
-      ? moneyFromCents(invoice.amount_cents)
-      : money(invoice.amount);
-    const due = invoice.due_date || invoice.due;
-    const days = Math.max(0, diffDays(invoice));
-
-    return text
-      .replace(/\{\{cliente\}\}/g, customer)
-      .replace(/\{\{numero\}\}/g, number)
-      .replace(/\{\{importo\}\}/g, amount)
-      .replace(/\{\{scadenza\}\}/g, dateIt(due))
-      .replace(/\{\{giorni_ritardo\}\}/g, String(days));
-  }
-
   function normalizeLocalInvoices() {
     try {
       const data = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
@@ -1091,185 +988,13 @@ Cordiali saluti.`
       invoice.customer_email || invoice.email || '',
       invoice.status || (invoice.paid ? 'paid' : 'open')
     ]);
-    const sanitizeCsvValue = (value) => {
-      let text = String(value ?? '');
-      // Neutralizza i valori che Excel/Sheets interpreterebbero come
-      // formule (CSV/formula injection) prefissandoli con un apice.
-      if (/^[=+\-@\t\r]/.test(text)) {
-        text = `'${text}`;
-      }
-      return text;
-    };
-    const csv = [header, ...rows].map((row) => row.map((value) => `"${sanitizeCsvValue(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = buildCsv(header, rows);
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'incassaprima-scadenze.csv';
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 700);
-  }
-
-  function normalizeCsvHeader(value) {
-    return String(value || '')
-      .replace(/^\uFEFF/, '')
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '');
-  }
-
-  function detectCsvDelimiter(text) {
-    const firstLine = String(text || '')
-      .replace(/^\uFEFF/, '')
-      .split(/\r?\n/)
-      .find((line) => line.trim());
-
-    if (!firstLine) return ',';
-
-    const candidates = [',', ';', '\t'];
-    return candidates
-      .map((delimiter) => ({
-        delimiter,
-        count: firstLine.split(delimiter).length - 1
-      }))
-      .sort((a, b) => b.count - a.count)[0].delimiter;
-  }
-
-  function parseCsvText(text, delimiter) {
-    const rows = [];
-    let row = [];
-    let value = '';
-    let quoted = false;
-
-    for (let index = 0; index < text.length; index += 1) {
-      const char = text[index];
-      const next = text[index + 1];
-
-      if (char === '"') {
-        if (quoted && next === '"') {
-          value += '"';
-          index += 1;
-        } else {
-          quoted = !quoted;
-        }
-        continue;
-      }
-
-      if (!quoted && char === delimiter) {
-        row.push(value.trim());
-        value = '';
-        continue;
-      }
-
-      if (!quoted && (char === '\n' || char === '\r')) {
-        if (char === '\r' && next === '\n') {
-          index += 1;
-        }
-
-        row.push(value.trim());
-
-        if (row.some((cell) => cell !== '')) {
-          rows.push(row);
-        }
-
-        row = [];
-        value = '';
-        continue;
-      }
-
-      value += char;
-    }
-
-    row.push(value.trim());
-
-    if (row.some((cell) => cell !== '')) {
-      rows.push(row);
-    }
-
-    return rows;
-  }
-
-  function normalizeImportedStatus(value) {
-    const normalized = normalizeCsvHeader(value);
-
-    const statuses = {
-      open: 'open',
-      aperta: 'open',
-      daincassare: 'open',
-      unpaid: 'open',
-
-      paid: 'paid',
-      pagata: 'paid',
-      pagato: 'paid',
-
-      promised: 'promised',
-      promessapagamento: 'promised',
-      promessadipagamento: 'promised',
-
-      disputed: 'disputed',
-      contestata: 'disputed',
-      contestato: 'disputed',
-
-      paused: 'paused',
-      sospesa: 'paused',
-      sospeso: 'paused'
-    };
-
-    return statuses[normalized] || 'open';
-  }
-
-  function normalizeImportedDate(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return null;
-
-    let year;
-    let month;
-    let day;
-
-    let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-
-    if (match) {
-      year = Number(match[1]);
-      month = Number(match[2]);
-      day = Number(match[3]);
-    } else {
-      match = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-
-      if (!match) return null;
-
-      day = Number(match[1]);
-      month = Number(match[2]);
-      year = Number(match[3]);
-    }
-
-    const date = new Date(year, month - 1, day);
-
-    if (
-      date.getFullYear() !== year ||
-      date.getMonth() !== month - 1 ||
-      date.getDate() !== day
-    ) {
-      return null;
-    }
-
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  }
-
-  function importKey(customerName, invoiceNumber, dueDate) {
-    const customer = String(customerName || '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
-
-    const number = String(invoiceNumber || '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
-
-    if (!customer || !number || !dueDate) return null;
-
-    return `${customer}::${number}::${dueDate}`;
   }
 
   function currentImportInvoiceSource() {
@@ -1292,34 +1017,6 @@ Cordiali saluti.`
     });
 
     return keys;
-  }
-
-  function csvValueByAliases(row, columns, aliases) {
-    for (const alias of aliases) {
-      const index = columns[alias];
-
-      if (index !== undefined && row[index] !== undefined) {
-        return String(row[index] || '').trim();
-      }
-    }
-
-    return '';
-  }
-
-  function formatImportProblems(rows) {
-    if (!rows.length) return '';
-
-    const preview = rows
-      .slice(0, 8)
-      .map((row) => `• Riga ${row.line}: ${row.reason}`)
-      .join('\n');
-
-    const suffix =
-      rows.length > 8
-        ? `\n• …e altre ${rows.length - 8} righe`
-        : '';
-
-    return `\n\nDettaglio:\n${preview}${suffix}`;
   }
 
   async function readImportRows(file) {
