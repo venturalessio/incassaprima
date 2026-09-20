@@ -20,10 +20,10 @@ sessioni di sviluppo.
 - ~~**Vista aggregata Studio.**~~ Fatto il 20/09/2026: lo switcher mostra
   ora un riepilogo aggregato ("da incassare"/"scaduto" su tutte le
   aziende insieme) più i due totali per ogni singola azienda.
-- **Copy marketing "Studio"** (`index.html`, `app/index.html`) da
-  rivedere per riflettere esattamente cosa è disponibile oggi vs cosa non
-  lo è ancora (la vista aggregata è ora reale, andrebbe verificato il
-  resto del copy).
+- ~~**Copy marketing "Studio"**~~ Fatto il 20/09/2026: landing pubblica e
+  modal Piani in-app riscritti per riflettere esattamente le funzionalità
+  reali di Free/Pro/Studio (aggiunta anche la card Studio, prima assente
+  dalla landing pubblica).
 - **Blocco analytics/aging** in `app/app.js` (funzione intorno alle righe
   3100-3180) ancora inline nel render, non estratto in `app/lib/` — buon
   prossimo candidato per continuare il lavoro di modularizzazione/test
@@ -51,3 +51,13 @@ sessioni di sviluppo.
   e storico compresi) tramite la funzione server-side
   `delete_managed_company`, che richiede di scrivere il nome esatto
   come conferma e non permette mai di eliminare l'identità Studio.
+- **Inserimento fatture tramite fotocamera** (bassa priorità). A costo
+  zero è realizzabile solo in versione "assistita": OCR interamente
+  client-side (es. Tesseract.js, nessuna chiamata a pagamento) che
+  legge il testo della foto e prova a pre-compilare cliente/importo/
+  data con euristiche, ma con precisione molto inferiore a uno scanner
+  (angolazioni, luce, formati di fattura tutti diversi) — l'utente
+  dovrà quasi sempre correggere qualcosa. Un vero "punta e si compila
+  da sola" richiede un servizio OCR/AI a pagamento (Google Vision,
+  Mindee, un modello vision). Da valutare solo dopo le voci sopra, che
+  portano più valore diretto per lo sforzo richiesto.
