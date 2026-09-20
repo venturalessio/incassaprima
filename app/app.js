@@ -36,6 +36,8 @@ import {
 } from './lib/csv.js';
 
 import { computeAnalytics } from './lib/analytics.js';
+import { reminderModels } from './lib/templates.js';
+import { isEligibleForAutomaticReminder, suggestedAutomaticModel } from './lib/reminders.js';
 
 (function () {
   'use strict';
@@ -93,43 +95,7 @@ import { computeAnalytics } from './lib/analytics.js';
     pendingInvitesList: []
   };
 
-  const models = {
-    courtesy: {
-      label: '1. Promemoria cortese',
-      subject: 'Promemoria scadenza fattura {{numero}}',
-      body: `Buongiorno {{cliente}},
-
-ti ricordiamo cortesemente che la fattura n. {{numero}}, di importo {{importo}}, è in scadenza il {{scadenza}}.
-
-Restiamo a disposizione per qualsiasi necessità.
-
-Grazie.`
-    },
-    first: {
-      label: '2. Primo sollecito',
-      subject: 'Promemoria pagamento fattura {{numero}}',
-      body: `Buongiorno {{cliente}},
-
-con la presente ricordiamo che la fattura n. {{numero}}, dell’importo di {{importo}}, con scadenza {{scadenza}}, risulta ancora da saldare.
-
-Qualora il pagamento fosse già stato effettuato, ti chiediamo di ignorare questa comunicazione. Diversamente, puoi indicarci la data prevista di pagamento?
-
-Grazie per la collaborazione.`
-    },
-    second: {
-      label: '3. Secondo sollecito',
-      subject: 'Secondo sollecito — fattura {{numero}} scaduta',
-      body: `Buongiorno {{cliente}},
-
-non risulta ancora pervenuto il pagamento della fattura n. {{numero}}, per un importo di {{importo}}, scaduta il {{scadenza}}.
-
-Chiediamo cortesemente di procedere al saldo oppure di comunicarci entro breve la data prevista di pagamento.
-
-Se hai già effettuato il pagamento, invia cortesemente la relativa contabile o ignora questa comunicazione.
-
-Cordiali saluti.`
-    }
-  };
+  const models = reminderModels;
 
   function configured() {
     return SUPABASE_URL.startsWith('https://') &&
@@ -181,34 +147,6 @@ Cordiali saluti.`
     ) || null;
   }
 
-  function isEligibleForAutomaticReminder(invoice) {
-    const customer = getCustomerForInvoice(invoice);
-    const status = invoice.status || 'open';
-    const todayIso = today();
-
-    if (!invoice || invoice.source !== 'cloud') return false;
-    if (!customer || customer.reminders_paused) return false;
-    if (['paid', 'disputed', 'paused'].includes(status)) return false;
-
-    if (
-      status === 'promised' &&
-      invoice.promised_payment_date &&
-      invoice.promised_payment_date >= todayIso
-    ) {
-      return false;
-    }
-
-    return (
-      status === 'open' ||
-      (
-        status === 'promised' &&
-        (
-          !invoice.promised_payment_date ||
-          invoice.promised_payment_date < todayIso
-        )
-      )
-    );
-  }
   function normalizeLocalInvoices() {
     try {
       const data = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
@@ -3225,16 +3163,6 @@ Cordiali saluti.`
     </div>
   `;
   }
-  function suggestedAutomaticModel(invoice) {
-    const days = diffDays(invoice);
-    const firstDays = Number(state.reminderSettings?.first_reminder_after_days || 3);
-    const secondDays = Number(state.reminderSettings?.second_reminder_after_days || 15);
-
-    if (days >= secondDays) return 'second';
-    if (days >= firstDays) return 'first';
-    return null;
-  }
-
   function buildScheduledReminder(invoice, templateKey) {
     return {
       invoice_id: invoice.id,
@@ -3347,10 +3275,10 @@ Cordiali saluti.`
     );
 
     const candidates = state.invoices
-      .filter((invoice) => isEligibleForAutomaticReminder(invoice))
+      .filter((invoice) => isEligibleForAutomaticReminder(invoice, getCustomerForInvoice(invoice)))
       .map((invoice) => ({
         invoice,
-        templateKey: suggestedAutomaticModel(invoice)
+        templateKey: suggestedAutomaticModel(invoice, state.reminderSettings)
       }))
       .filter(
         (item) =>
@@ -3677,6 +3605,7 @@ Cordiali saluti.`
     $('rulesError').classList.remove('visible');
     $('firstReminderDays').value = state.reminderSettings.first_reminder_after_days || 3;
     $('secondReminderDays').value = state.reminderSettings.second_reminder_after_days || 15;
+    $('automaticEmailEnabled').checked = Boolean(state.reminderSettings.automatic_email_enabled);
     $('rulesBack').style.display = 'flex';
   }
 
@@ -3710,17 +3639,19 @@ Cordiali saluti.`
       return;
     }
 
+    const automaticEmailEnabled = $('automaticEmailEnabled').checked;
+
     const payload = {
+      organization_id: state.organization.id,
       first_reminder_after_days: firstDays,
       second_reminder_after_days: secondDays,
-      approval_required: true,
-      automatic_email_enabled: false
+      approval_required: !automaticEmailEnabled,
+      automatic_email_enabled: automaticEmailEnabled
     };
 
     const { data, error } = await state.supabase
       .from('organization_reminder_settings')
-      .update(payload)
-      .eq('organization_id', state.organization.id)
+      .upsert(payload, { onConflict: 'organization_id' })
       .select()
       .single();
 

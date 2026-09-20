@@ -37,10 +37,31 @@ sessioni di sviluppo.
 - **Fatturazione reale dei piani Pro/Studio**: integrazione pagamenti
   (Stripe o simile) + webhook che aggiorna `organizations.plan` con
   `service_role` (oggi il campo è scrivibile solo da lì, per design).
-- **Promemoria automatici via email**: Edge Function + servizio email
-  (Resend/SendGrid o simile) + cron che rispetti
-  `organization_reminder_settings` (colonne già pronte nel DB, nessuna
-  automazione dietro).
+- **Promemoria automatici via email** — infrastruttura completata il
+  20/09/2026, **ma non ancora attivabile per clienti reali**. Funzione
+  Edge `send-reminder-emails` pianificata (`pg_cron`, ogni giorno alle
+  06:00 UTC) che genera le bozze di sollecito per tutte le
+  organizzazioni (non serve più avere il browser aperto) e, per chi
+  attiva il nuovo interruttore "Invia i solleciti automaticamente via
+  email" nel modal Regole, invia davvero l'email tramite Resend.
+  Dettagli tecnici completi in `supabase/README.md`. **Cosa manca
+  prima di poterlo offrire davvero**:
+  1. creare un account Resend e impostare `RESEND_API_KEY` come secret
+     della funzione (oggi assente: senza, la funzione genera solo le
+     bozze, non invia nulla — sicuro, nessun rischio ad aver
+     distribuito l'infrastruttura in anticipo);
+  2. **comprare/usare un dominio proprio e verificarlo su Resend**
+     (record DNS SPF/DKIM) — senza dominio verificato le email
+     arrivano solo alla propria casella Resend di test, mai a clienti
+     reali (regola anti-phishing di tutti i provider email);
+  3. impostare `CRON_SECRET` come secret della funzione (**obbligatorio
+     anche solo per la generazione automatica delle bozze**: senza,
+     il cron job gira ma la funzione rifiuta ogni chiamata con 401 —
+     verificato dal vivo, comportamento fail-safe voluto).
+  Fino ad allora il checkbox resta visibile ma esplicitamente etichettato
+  come "contattaci prima di abilitarlo", e non è stato aggiunto
+  all'elenco pubblico delle funzionalità Pro/Studio per non promettere
+  qualcosa che il singolo utente non può ancora attivare da solo.
 - ~~**Multi-utente per organizzazione**~~ Fatto il 20/09/2026: inviti
   via link (`?invite=<token>`) per aggiungere collaboratori a
   qualunque organizzazione (Pro, identità Studio o azienda gestita).
