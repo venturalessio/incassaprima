@@ -35,35 +35,55 @@ sessioni di sviluppo.
 ## Funzionalità da costruire
 
 - ~~**Fatturazione reale del piano Pro**~~ Fatto il 21/09/2026:
-  checkout self-service via Stripe. Tre funzioni Edge
-  (`create-checkout-session`, `create-portal-session`, `stripe-webhook`)
-  + colonne `stripe_customer_id`/`stripe_subscription_id`/
-  `stripe_subscription_status` su `organizations` (le prime due bloccate,
-  solo `service_role`) + funzione `upgrade_to_studio` (pronta per il
-  self-service Studio futuro, testata dal vivo con dati usa e getta,
-  vedi sotto). In-app: pulsante "Piani" in header (il modal esisteva già
-  ma non era mai stato collegato a nessun pulsante), CTA "Passa a Pro"
-  nel modal Piani, "Gestisci abbonamento" per chi ha già un piano a
-  pagamento attivo.
+  checkout self-service via **Paddle** (Merchant of Record). Prima
+  versione era su Stripe, integrata e mergiata lo stesso giorno, poi
+  sostituita su richiesta esplicita dell'utente prima di andare live
+  (vedi sotto "Perché Paddle e non Stripe"): nessun cliente reale è mai
+  passato dall'integrazione Stripe. Tre funzioni Edge
+  (`create-paddle-transaction`, `create-portal-session`,
+  `paddle-webhook`) + colonne `paddle_customer_id`/
+  `paddle_subscription_id`/`paddle_subscription_status` su
+  `organizations` (le prime due bloccate, solo `service_role`) +
+  funzione `upgrade_to_studio` (pronta per il self-service Studio
+  futuro, testata dal vivo con dati usa e getta, vedi sotto — non
+  legata a una piattaforma di pagamento specifica, non ha richiesto
+  modifiche nel passaggio a Paddle). In-app: pulsante "Piani" in header
+  (il modal esisteva già ma non era mai stato collegato a nessun
+  pulsante), CTA "Passa a Pro" nel modal Piani (apre il checkout overlay
+  di Paddle.js, senza uscire dalla pagina), "Gestisci abbonamento" per
+  chi ha già un piano a pagamento attivo.
+  - **Perché Paddle e non Stripe**: la prima integrazione (mergiata,
+    poi sostituita) usava Stripe, scelto perché i clienti italiani B2B
+    si aspettano una fattura elettronica SdI vera. Approfondendo però è
+    emerso che le aziende italiane comprano regolarmente SaaS esteri
+    (Notion, Slack, Figma, AWS...) senza fattura SdI, gestiti dal
+    commercialista con reverse charge/autofattura — un attrito minore
+    di quanto stimato. Il vantaggio di un Merchant of Record (Paddle
+    emette lui la fattura al cliente finale e gestisce IVA/sales tax
+    nelle varie giurisdizioni) ha quindi prevalso, soprattutto senza
+    partita IVA aperta. **Attenzione**: un MoR non elimina l'obbligo
+    fiscale sul reddito percepito dai payout — da concordare comunque
+    con un commercialista, vedi punto "Partita IVA" sotto.
   - **Solo Pro è self-service.** Studio richiede la ristrutturazione dei
     dati (nuova identità + organizzazione esistente riassegnata come
     azienda gestita, la stessa cosa fatta a mano in passato — vedi voce
     sopra sulla migrazione Pro → Studio): troppo rischioso automatizzarlo
     in un webhook non ancora provato su clienti reali. Per ora Studio
     resta ad attivazione semi-manuale: contatto diretto + link di
-    pagamento Stripe creato a mano, poi la stessa conversione manuale di
+    pagamento Paddle creato a mano, poi la stessa conversione manuale di
     sempre (ora disponibile anche come funzione `upgrade_to_studio`,
     richiamabile via SQL invece di operazioni ad hoc). Prossimo passo
     naturale quando Pro self-service sarà provato: automatizzare anche
     Studio nel webhook, e ricollegare la quantity extra-aziende
-    (vedi `app/lib/billing.js`) a una subscription item Stripe reale
-    (metered/quantity billing).
+    (vedi `app/lib/billing.js`) a una quantity reale sulla transazione
+    Paddle (supporto nativo multi-seat/quantity).
   - **Cosa manca prima di incassare davvero** (fuori dalla portata di
     questa sessione, dettagli in `supabase/README.md`): un account
-    Stripe (partire in modalità test, nessun rischio), creare il
-    prodotto/prezzo Pro su Stripe, configurare l'endpoint webhook,
-    impostare i secret (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_PRO`,
-    `STRIPE_WEBHOOK_SECRET`) sulle funzioni Edge. Finché non sono
+    Paddle (partire in modalità sandbox, nessun rischio), creare il
+    prodotto/prezzo Pro su Paddle, configurare l'endpoint webhook,
+    impostare i secret (`PADDLE_API_KEY`, `PADDLE_PRICE_ID_PRO`,
+    `PADDLE_WEBHOOK_SECRET`) sulle funzioni Edge e il
+    `PADDLE_CLIENT_TOKEN` pubblico in `app/app.js`. Finché non sono
     impostati, il checkout risponde con un errore gestito ("pagamenti
     non ancora configurati") invece di rompersi — verificato dal vivo.
   - **Partita IVA**: decisioni prese il 20/09/2026 dopo una ricerca di
@@ -71,23 +91,18 @@ sessioni di sviluppo.
     ricorrente la "prestazione occasionale" non è percorribile (rischio
     di riqualificazione dell'attività come abituale, con sanzioni).
     Percorso indicato: apertura di una partita IVA in **regime
-    forfettario** (gratuita, imposta sostitutiva 5% i primi 5 anni),
-    usando gli strumenti gratuiti dell'Agenzia delle Entrate (portale
-    "Fatture e Corrispettivi") per generare le fatture elettroniche
-    verso gli abbonati — sufficienti al volume iniziale, nessun
-    gestionale a pagamento necessario solo per questo. **Da verificare
-    con un commercialista prima di procedere** (codice ATECO corretto e
-    conferma dei dettagli del regime). Necessaria prima di passare le
-    chiavi Stripe in modalità live.
+    forfettario** (gratuita, imposta sostitutiva 5% i primi 5 anni). Con
+    Paddle come Merchant of Record la fatturazione verso i singoli
+    abbonati non serve più (la emette Paddle), ma resta da chiarire con
+    un commercialista come dichiarare i payout ricevuti da Paddle
+    (**Da verificare prima di procedere**: codice ATECO corretto e
+    corretto inquadramento fiscale dei payout). Necessaria prima di
+    passare le chiavi Paddle in modalità live.
   - **Prezzi** (già su landing page e modal Piani in-app): Pro da
     €9/mese; Studio da €19/mese fino a 3 aziende gestite, +€5/mese per
     ogni azienda aggiuntiva (modello analogo a Danea Easyfatt, che fa
     pagare €120/anno per azienda aggiuntiva sulle licenze
-    multi-azienda). Piattaforma scelta: **Stripe**, non Paddle/Lemon
-    Squeezy — i servizi *merchant of record* toglierebbero l'onere IVA
-    ma diventerebbero loro il venditore legale, creando attrito con
-    clienti italiani B2B che si aspettano una fattura elettronica vera
-    (obbligo SdI per soggetti stabiliti in Italia).
+    multi-azienda).
 - **Promemoria automatici via email** — infrastruttura completata il
   20/09/2026, **ma non ancora attivabile per clienti reali**. Funzione
   Edge `send-reminder-emails` pianificata (`pg_cron`, ogni giorno alle
