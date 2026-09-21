@@ -146,16 +146,26 @@ diretta senza P.IVA — la gestione fiscale sugli incassi ricevuti resta
 comunque da concordare con un commercialista, Paddle non elimina quella
 parte.
 
-Tre funzioni Edge, verificate dal vivo (guardia di autenticazione,
-fail-closed senza chiavi configurate; algoritmo di verifica firma
-webhook incrociato con un riferimento HMAC-SHA256 indipendente) ma non
-ancora testabili end-to-end da questa sessione: serve un account Paddle
-reale, le cui chiavi vanno impostate come secret e mai condivise in
-chat o versionate nel repository. Niente SDK: le funzioni chiamano
-l'API REST di Paddle con `fetch()` diretto (niente dipendenza da
-`npm:@paddle/paddle-node-sdk`, la cui compatibilità con Deno non era
+Tre funzioni Edge, **verificate end-to-end il 21/09/2026** con un
+account Paddle sandbox reale: guardia di autenticazione, fail-closed
+senza chiavi configurate, algoritmo di verifica firma webhook
+incrociato con un riferimento HMAC-SHA256 indipendente, creazione
+transazione via API REST, webhook `subscription.created`/
+`subscription.canceled` che aggiorna `organizations` — e infine un
+acquisto vero in sandbox dall'app (carta di test, overlay Paddle.js)
+che ha attivato correttamente il piano Pro. Niente SDK: le funzioni
+chiamano l'API REST di Paddle con `fetch()` diretto (niente dipendenza
+da `npm:@paddle/paddle-node-sdk`, la cui compatibilità con Deno non era
 verificabile da questa sessione), e la firma dei webhook è verificata a
 mano con `crypto.subtle` (Web Crypto, nativo in Deno).
+
+**Nota per il passaggio a "live"**: l'account Paddle richiede anche un
+**"Default payment link"** impostato (Checkout → Checkout Settings →
+General) — un URL completo (`https://...`, non solo il dominio) di un
+dominio approvato — altrimenti la creazione di transazioni fallisce con
+`transaction_default_checkout_url_not_set`. Scoperto durante questo
+test: va rifatto anche sull'account live (i domini vanno approvati
+separatamente per sandbox e live).
 
 - **`create-paddle-transaction`** (`verify_jwt=true`): chiamata da un
   utente loggato per passare al piano Pro. Verifica lato server che il
