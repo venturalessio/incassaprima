@@ -77,15 +77,19 @@ sessioni di sviluppo.
     Studio nel webhook, e ricollegare la quantity extra-aziende
     (vedi `app/lib/billing.js`) a una quantity reale sulla transazione
     Paddle (supporto nativo multi-seat/quantity).
-  - **Cosa manca prima di incassare davvero** (fuori dalla portata di
-    questa sessione, dettagli in `supabase/README.md`): un account
-    Paddle (partire in modalità sandbox, nessun rischio), creare il
-    prodotto/prezzo Pro su Paddle, configurare l'endpoint webhook,
-    impostare i secret (`PADDLE_API_KEY`, `PADDLE_PRICE_ID_PRO`,
-    `PADDLE_WEBHOOK_SECRET`) sulle funzioni Edge e il
-    `PADDLE_CLIENT_TOKEN` pubblico in `app/app.js`. Finché non sono
-    impostati, il checkout risponde con un errore gestito ("pagamenti
-    non ancora configurati") invece di rompersi — verificato dal vivo.
+  - ~~**Configurazione e test sandbox**~~ Fatto il 21/09/2026: account
+    Paddle sandbox creato, prodotto/prezzo Pro configurato, webhook
+    collegato, i 4 secret impostati (`PADDLE_API_KEY`,
+    `PADDLE_PRICE_ID_PRO`, `PADDLE_WEBHOOK_SECRET` su Supabase,
+    `PADDLE_CLIENT_TOKEN` pubblico in `app/app.js`), e **acquisto di
+    prova completato dall'app vera** (carta di test, overlay Paddle.js):
+    piano passato a Pro correttamente, email di conferma con fattura
+    ricevuta da Paddle. Circuito end-to-end verificato: checkout →
+    pagamento → webhook → aggiornamento piano. Richiesto un passaggio
+    non ovvio non documentato altrove: impostare un "Default payment
+    link" (URL completo, dominio approvato) in Checkout Settings su
+    Paddle, altrimenti la creazione di transazioni fallisce — da
+    rifare anche sull'account live.
   - **Partita IVA**: decisioni prese il 20/09/2026 dopo una ricerca di
     mercato. L'utente **non ha ancora partita IVA**; per un abbonamento
     ricorrente la "prestazione occasionale" non è percorribile (rischio
