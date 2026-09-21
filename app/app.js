@@ -38,6 +38,7 @@ import {
 import { computeAnalytics } from './lib/analytics.js';
 import { reminderModels } from './lib/templates.js';
 import { isEligibleForAutomaticReminder, suggestedAutomaticModel } from './lib/reminders.js';
+import { computeStudioBilling } from './lib/billing.js';
 
 (function () {
   'use strict';
@@ -2766,6 +2767,18 @@ import { isEligibleForAutomaticReminder, suggestedAutomaticModel } from './lib/r
       </div>`
       : '';
 
+    const billing = computeStudioBilling(state.studioCompanies.length);
+    const billingNotice = billing.extraCompanies > 0
+      ? `
+      <div class="recommendation" style="margin-bottom:16px">
+        ${billing.companyCount} aziende gestite (${billing.includedCompanies} incluse nel piano + ${billing.extraCompanies} extra)
+        — <strong>${moneyFromCents(billing.extraMonthlyCents)}/mese</strong> in più da fatturare.
+      </div>`
+      : `
+      <p class="smallhint" style="margin-bottom:16px">
+        ${billing.companyCount} di ${billing.includedCompanies} aziende incluse nel piano Studio.
+      </p>`;
+
     const ownIsActive = Boolean(state.organization && state.organization.id === state.studioIdentityOrgId);
     const ownRow = state.studioIdentityOrg
       ? `
@@ -2806,6 +2819,7 @@ import { isEligibleForAutomaticReminder, suggestedAutomaticModel } from './lib/r
 
     $('studioClientsContent').innerHTML = `
     ${summary}
+    ${billingNotice}
     ${activeNotice}
     <div class="customer-list">
       ${ownRow}
