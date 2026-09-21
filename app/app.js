@@ -47,6 +47,13 @@ import { computeStudioBilling } from './lib/billing.js';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ibxT_9Bc7rUznsufgMS7ow_u5ydz5fa';
   const LOCAL_KEY = 'incassaprima_pwa_v1';
 
+  // Token pubblico lato client di Paddle (equivalente della publishable key
+  // di Stripe: sicuro da esporre, autorizza solo l'apertura del checkout
+  // overlay, non movimenti di denaro). 'sandbox' finché non passiamo a un
+  // account Paddle live — vedi supabase/README.md per la configurazione.
+  const PADDLE_CLIENT_TOKEN = 'INCOLLA_QUI_IL_TOKEN_CLIENT_PADDLE';
+  const PADDLE_ENVIRONMENT = 'sandbox';
+
   const $ = (id) => document.getElementById(id);
   const state = {
     supabase: null,
@@ -212,6 +219,8 @@ import { computeStudioBilling } from './lib/billing.js';
   }
 
   async function initializeSupabase() {
+    initPaddle();
+
     if (!configured()) {
       setStatus('Modalità locale: configura Supabase per attivare Pro.', 'warning');
       return;
@@ -241,7 +250,6 @@ import { computeStudioBilling } from './lib/billing.js';
         await loadCloudData();
       }
       setStatus(`Cloud attivo · ${state.session.user.email}`, 'success');
-      detectCheckoutReturn();
     } else {
       setStatus('Modalità locale. Accedi per salvare nel cloud.', 'info');
       if (state.pendingInviteToken) {
@@ -272,28 +280,31 @@ import { computeStudioBilling } from './lib/billing.js';
     state.pendingInvitePreview = (data && data[0]) || null;
   }
 
-  // Rileva il ritorno da Stripe Checkout (?checkout=success|cancelled),
-  // mostra un avviso e ricarica i dati dell'organizzazione dopo una breve
-  // attesa (il webhook che aggiorna il piano arriva in modo asincrono,
-  // di solito entro pochi secondi dal redirect).
-  function detectCheckoutReturn() {
-    const params = new URLSearchParams(window.location.search);
-    const checkout = params.get('checkout');
-    if (!checkout) return;
+  // Inizializza Paddle.js (checkout overlay, resta nella pagina invece di
+  // fare un redirect come Stripe Checkout). eventCallback intercetta il
+  // completamento lato client per aggiornare subito la UI: il piano vero
+  // e proprio viene comunque confermato in modo asincrono dal webhook
+  // server-side (paddle-webhook), non da questo evento — per questo
+  // ricarichiamo i dati dopo una breve attesa invece che a comando.
+  function initPaddle() {
+    if (!window.Paddle || !PADDLE_CLIENT_TOKEN || PADDLE_CLIENT_TOKEN.startsWith('INCOLLA_QUI')) return;
 
-    const url = new URL(window.location.href);
-    url.searchParams.delete('checkout');
-    window.history.replaceState({}, '', url);
-
-    if (checkout === 'success') {
-      toast('Pagamento completato! Aggiornamento del piano in corso…');
-      setTimeout(async () => {
-        await loadCloudData();
-        toast('Piano aggiornato.');
-      }, 1500);
-    } else if (checkout === 'cancelled') {
-      toast('Pagamento annullato: nessun addebito effettuato.');
+    if (PADDLE_ENVIRONMENT === 'sandbox') {
+      window.Paddle.Environment.set('sandbox');
     }
+
+    window.Paddle.Initialize({
+      token: PADDLE_CLIENT_TOKEN,
+      eventCallback(event) {
+        if (event.name === 'checkout.completed') {
+          toast('Pagamento completato! Aggiornamento del piano in corso…');
+          setTimeout(async () => {
+            await loadCloudData();
+            toast('Piano aggiornato.');
+          }, 1500);
+        }
+      }
+    });
   }
 
   function openAuthForInvite() {
@@ -2902,7 +2913,7 @@ import { computeStudioBilling } from './lib/billing.js';
   // Mostra, nel modal Piani, l'azione utile in base a chi sta guardando:
   // niente se non è loggato o sta guardando un'azienda gestita (il piano
   // si gestisce sempre dalla propria organizzazione/identità, non da lì),
-  // altrimenti un pulsante per passare a Pro (checkout Stripe) o per
+  // altrimenti un pulsante per passare a Pro (checkout Paddle) o per
   // gestire un abbonamento già attivo.
   function renderPlansUpgradeArea() {
     const area = $('plansUpgradeArea');
@@ -2957,8 +2968,13 @@ import { computeStudioBilling } from './lib/billing.js';
   async function upgradeToProCheckout() {
     if (!state.session || !state.organization) return;
 
-    const { data, error } = await state.supabase.functions.invoke('create-checkout-session', {
-      body: { plan: 'pro', organization_id: state.organization.id }
+    if (!window.Paddle) {
+      toast('Servizio di pagamento non disponibile. Riprova più tardi.');
+      return;
+    }
+
+    const { data, error } = await state.supabase.functions.invoke('create-paddle-transaction', {
+      body: { organization_id: state.organization.id }
     });
 
     if (error) {
@@ -2966,11 +2982,15 @@ import { computeStudioBilling } from './lib/billing.js';
       return;
     }
 
-    if (data?.url) {
-      window.location.href = data.url;
-    } else {
+    if (!data?.transaction_id) {
       toast('Risposta inattesa dal server di pagamento.');
+      return;
     }
+
+    window.Paddle.Checkout.open({
+      transactionId: data.transaction_id,
+      customer: state.session.user.email ? { email: state.session.user.email } : undefined
+    });
   }
 
   async function openBillingPortal() {

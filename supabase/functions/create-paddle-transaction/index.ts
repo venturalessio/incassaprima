@@ -1,12 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Crea un link al Customer Portal di Paddle (gestione/annullamento
-// self-service dell'abbonamento) per l'organizzazione indicata. Chiamata
-// da un utente autenticato (verify_jwt=true). Il link e' monouso e di
-// breve durata: va generato al momento, mai riusato o salvato.
+// Crea una transazione Paddle (l'equivalente di una Stripe Checkout
+// Session) per passare al piano Pro. Il client apre poi il checkout
+// overlay di Paddle.js passando l'id restituito qui: organization_id e
+// target_plan finiscono in custom_data lato server (quindi fidati), non
+// possono essere manomessi dal browser come accadrebbe passandoli
+// direttamente al checkout lato client. Chiamata da un utente
+// autenticato (verify_jwt=true).
 
 const PADDLE_API_KEY = Deno.env.get("PADDLE_API_KEY");
+const PADDLE_PRICE_ID_PRO = Deno.env.get("PADDLE_PRICE_ID_PRO");
 const PADDLE_ENVIRONMENT = Deno.env.get("PADDLE_ENVIRONMENT") || "sandbox";
 const PADDLE_API_BASE =
   PADDLE_ENVIRONMENT === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
@@ -50,15 +54,18 @@ Deno.serve(async (req) => {
 
   if (!body.organization_id) return jsonResponse({ error: "Organizzazione mancante." }, 400);
 
-  if (!PADDLE_API_KEY) {
-    return jsonResponse({ error: "I pagamenti non sono ancora configurati." }, 503);
+  if (!PADDLE_API_KEY || !PADDLE_PRICE_ID_PRO) {
+    return jsonResponse(
+      { error: "I pagamenti non sono ancora configurati. Riprova più tardi o contattaci." },
+      503
+    );
   }
 
   const supabaseService = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: membership, error: membershipError } = await supabaseService
     .from("organization_members")
-    .select("role, organizations(paddle_customer_id)")
+    .select("role, organizations(id, name, plan, managed_by, paddle_customer_id)")
     .eq("user_id", userData.user.id)
     .eq("organization_id", body.organization_id)
     .maybeSingle();
@@ -68,30 +75,38 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Non sei il proprietario di questa organizzazione." }, 403);
   }
 
-  const customerId = (membership.organizations as any)?.paddle_customer_id;
-  if (!customerId) {
-    return jsonResponse({ error: "Nessun abbonamento attivo trovato per questa organizzazione." }, 400);
+  const organization = membership.organizations as any;
+  if (organization.managed_by !== null || organization.plan === "studio") {
+    return jsonResponse({ error: "Questa organizzazione non può passare al piano Pro." }, 400);
   }
 
-  const paddleResponse = await fetch(`${PADDLE_API_BASE}/customers/${customerId}/portal-sessions`, {
+  const transactionBody: Record<string, unknown> = {
+    items: [{ price_id: PADDLE_PRICE_ID_PRO, quantity: 1 }],
+    custom_data: { organization_id: organization.id, target_plan: "pro" }
+  };
+  if (organization.paddle_customer_id) {
+    transactionBody.customer_id = organization.paddle_customer_id;
+  }
+
+  const paddleResponse = await fetch(`${PADDLE_API_BASE}/transactions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${PADDLE_API_KEY}`,
       "Content-Type": "application/json",
       "Paddle-Version": "1"
     },
-    body: JSON.stringify({})
+    body: JSON.stringify(transactionBody)
   });
 
   if (!paddleResponse.ok) {
     const errorBody = await paddleResponse.text();
-    console.error("Errore creazione portal session Paddle:", errorBody);
-    return jsonResponse({ error: "Impossibile aprire la gestione abbonamento. Riprova più tardi." }, 502);
+    console.error("Errore creazione transazione Paddle:", errorBody);
+    return jsonResponse({ error: "Impossibile avviare il pagamento. Riprova più tardi." }, 502);
   }
 
   const paddleData = await paddleResponse.json();
-  const url = paddleData?.data?.urls?.general?.overview;
-  if (!url) return jsonResponse({ error: "Risposta inattesa da Paddle." }, 502);
+  const transactionId = paddleData?.data?.id;
+  if (!transactionId) return jsonResponse({ error: "Risposta inattesa da Paddle." }, 502);
 
-  return jsonResponse({ url });
+  return jsonResponse({ transaction_id: transactionId });
 });

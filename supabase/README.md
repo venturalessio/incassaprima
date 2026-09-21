@@ -135,75 +135,111 @@ policy dedicata per la lettura/scrittura di clienti e fatture.
   fosse chiamabile dal client, chiunque potrebbe auto-promuoversi a
   Studio gratis.
 
-## Pagamenti reali (Stripe)
+## Pagamenti reali (Paddle)
 
-Tre funzioni Edge per l'integrazione Stripe, verificate dal vivo (guardia
-di autenticazione, fail-closed senza chiavi configurate) ma non ancora
-testabili end-to-end da questa sessione: servono le chiavi Stripe del
-progetto reale, che vanno impostate come secret e mai condivise in chat
-o versionate nel repository.
+L'integrazione pagamenti usa **Paddle** come Merchant of Record: Paddle
+è il venditore legale verso il cliente finale (emette lui le fatture,
+gestisce IVA/sales tax nelle varie giurisdizioni) e versa a noi il
+netto degli incassi. Prima scelta era Stripe (vedi commit precedenti),
+sostituito con Paddle per evitare l'obbligo di fatturazione elettronica
+diretta senza P.IVA — la gestione fiscale sugli incassi ricevuti resta
+comunque da concordare con un commercialista, Paddle non elimina quella
+parte.
 
-- **`create-checkout-session`** (`verify_jwt=true`): chiamata da un
-  utente loggato per passare al piano Pro. Crea (o riusa) il Customer
-  Stripe dell'organizzazione e una Checkout Session in modalità
-  abbonamento. **Solo il piano Pro è offerto in self-service**: Studio
-  richiede una ristrutturazione dei dati (vedi `upgrade_to_studio` sopra)
-  che per ora resta ad attivazione manuale/semi-manuale (link di
-  pagamento Stripe creato a mano dopo una conversazione, poi lo stesso
-  intervento di conversione già documentato).
-- **`create-portal-session`** (`verify_jwt=true`): apre il Billing
-  Portal Stripe (gestione metodo di pagamento, fatture, annullamento
-  self-service) per l'organizzazione del chiamante.
-- **`stripe-webhook`** (`verify_jwt=false`, autenticata verificando la
-  firma della richiesta con `STRIPE_WEBHOOK_SECRET`): riceve
-  `checkout.session.completed` (attiva il piano Pro),
-  `customer.subscription.updated` (aggiorna lo stato; se lo stato
-  diventa `canceled`/`unpaid`/`incomplete_expired` torna al piano Free
-  — `past_due`, cioè un tentativo di addebito in corso di ripetizione,
-  **non** fa scattare il downgrade) e `customer.subscription.deleted`
+Tre funzioni Edge, verificate dal vivo (guardia di autenticazione,
+fail-closed senza chiavi configurate; algoritmo di verifica firma
+webhook incrociato con un riferimento HMAC-SHA256 indipendente) ma non
+ancora testabili end-to-end da questa sessione: serve un account Paddle
+reale, le cui chiavi vanno impostate come secret e mai condivise in
+chat o versionate nel repository. Niente SDK: le funzioni chiamano
+l'API REST di Paddle con `fetch()` diretto (niente dipendenza da
+`npm:@paddle/paddle-node-sdk`, la cui compatibilità con Deno non era
+verificabile da questa sessione), e la firma dei webhook è verificata a
+mano con `crypto.subtle` (Web Crypto, nativo in Deno).
+
+- **`create-paddle-transaction`** (`verify_jwt=true`): chiamata da un
+  utente loggato per passare al piano Pro. Verifica lato server che il
+  chiamante sia proprietario dell'organizzazione indicata (stesso
+  controllo che aveva `create-checkout-session` con Stripe), poi crea
+  una Transazione Paddle con `custom_data: {organization_id,
+  target_plan}` **impostati server-side** (non manomettibili dal
+  browser) e restituisce l'id al client, che apre il checkout overlay
+  di Paddle.js passando quell'id (`Paddle.Checkout.open({transactionId
+  })` — niente redirect di pagina, l'utente resta nella SPA). **Solo il
+  piano Pro è offerto in self-service**: Studio richiede una
+  ristrutturazione dei dati (vedi `upgrade_to_studio` sopra) che per
+  ora resta ad attivazione manuale/semi-manuale.
+- **`create-portal-session`** (`verify_jwt=true`): crea un link
+  (monouso, breve durata) al Customer Portal di Paddle (gestione
+  metodo di pagamento, fatture, annullamento self-service) per
+  l'organizzazione del chiamante.
+- **`paddle-webhook`** (`verify_jwt=false`, autenticata verificando la
+  firma della richiesta con `PADDLE_WEBHOOK_SECRET` — header
+  `Paddle-Signature: ts=...;h1=...`, dove `h1` è l'HMAC-SHA256
+  esadecimale di `ts:rawBody`): riceve `subscription.created` (attiva
+  il piano Pro, legge `organization_id`/`target_plan` da
+  `custom_data`), `subscription.updated` (aggiorna lo stato; se lo
+  stato diventa `canceled`/`paused` torna al piano Free — `past_due`,
+  cioè un tentativo di addebito in corso di ripetizione via Paddle
+  Retain, **non** fa scattare il downgrade) e `subscription.canceled`
   (torna al piano Free).
+
+Le vecchie funzioni Stripe (`create-checkout-session`, `stripe-webhook`)
+non sono state eliminate — gli strumenti a disposizione di questa
+sessione non lo permettono — ma sono state svuotate: rispondono sempre
+`410 Gone` e non hanno più segreti Stripe configurati.
 
 ### Configurazione richiesta (manuale, fuori dalla portata di questa sessione)
 
-**1. Account Stripe** — crearne uno se non esiste già, partendo in
-**modalità test** (le chiavi test iniziano con `sk_test_`/`pk_test_`,
-nessun rischio di addebiti reali finché non si passa in modalità live).
+**1. Account Paddle** — crearne uno se non esiste già, partendo in
+**modalità sandbox** (nessun rischio di addebiti reali finché non si
+passa in modalità live). La console sandbox è separata da quella live
+(login diverso), con API base URL diverso
+(`sandbox-api.paddle.com` vs `api.paddle.com`).
 
-**2. Prodotto e prezzo Pro** — dalla Dashboard Stripe (Product catalog):
-crea un prodotto "IncassaPrima Pro" con un prezzo ricorrente mensile di
-€9, e copia l'ID del prezzo (`price_...`).
+**2. Prodotto e prezzo Pro** — dal catalogo Paddle: crea un prodotto
+"IncassaPrima Pro" con un prezzo ricorrente mensile di €9, e copia l'ID
+del prezzo (`pri_...`).
 
-**3. Endpoint webhook** — dalla Dashboard Stripe (Developers → Webhooks),
-aggiungi un endpoint con URL
-`https://dxlmtihwvcqstrxwzapj.supabase.co/functions/v1/stripe-webhook`,
-eventi da ascoltare: `checkout.session.completed`,
-`customer.subscription.updated`, `customer.subscription.deleted`. Copia
-il signing secret (`whsec_...`).
+**3. Endpoint webhook** — dalle impostazioni sviluppatore di Paddle
+(Notifications), aggiungi un endpoint con URL
+`https://dxlmtihwvcqstrxwzapj.supabase.co/functions/v1/paddle-webhook`,
+eventi da ascoltare: `subscription.created`, `subscription.updated`,
+`subscription.canceled`. Copia la notification secret key.
 
 **4. Secret delle funzioni Edge** — dalla Dashboard Supabase (Project
-Settings → Edge Functions → Secrets), o via CLI, impostare su **tutte e
-tre** le funzioni (i secret sono condivisi a livello di progetto):
+Settings → Edge Functions → Secrets), o via CLI, impostare (i secret
+sono condivisi a livello di progetto):
 
-- `STRIPE_SECRET_KEY` — la chiave segreta Stripe (test o live).
-- `STRIPE_PRICE_ID_PRO` — l'ID del prezzo Pro creato al punto 2.
-- `STRIPE_WEBHOOK_SECRET` — il signing secret del webhook creato al
-  punto 3.
-- `APP_URL` — opzionale, default
-  `https://venturalessio.github.io/incassaprima/app/` (dove Stripe
-  reindirizza dopo il checkout/portale). Da impostare solo se l'app
-  verrà servita da un altro dominio.
+- `PADDLE_API_KEY` — la chiave API Paddle (sandbox o live).
+- `PADDLE_PRICE_ID_PRO` — l'ID del prezzo Pro creato al punto 2.
+- `PADDLE_WEBHOOK_SECRET` — la notification secret key del webhook
+  creato al punto 3.
+- `PADDLE_ENVIRONMENT` — `sandbox` (default se non impostata) o
+  `production`, seleziona l'API base URL usato dalle funzioni.
 
-Finché `STRIPE_SECRET_KEY`/`STRIPE_PRICE_ID_PRO` non sono impostate,
-`create-checkout-session` risponde con un errore gestito (503,
+Finché `PADDLE_API_KEY`/`PADDLE_PRICE_ID_PRO` non sono impostate,
+`create-paddle-transaction` risponde con un errore gestito (503,
 "pagamenti non ancora configurati") invece di fallire in modo oscuro:
 sicuro da aver distribuito le funzioni in anticipo. Stesso discorso per
-`stripe-webhook` senza `STRIPE_WEBHOOK_SECRET` — verificato dal vivo
+`paddle-webhook` senza `PADDLE_WEBHOOK_SECRET` — verificato dal vivo
 che risponde 503 invece di accettare richieste non firmate.
 
-**5. Passaggio a "live"** — quando si è pronti a incassare davvero:
-ripetere i punti 1-4 con le chiavi live Stripe (account verificato con
-dati bancari), e solo a quel punto togliere il badge "IN ARRIVO" dalla
-card Pro su `index.html`.
+**5. Configurazione lato client** — in `app/app.js`, sostituire
+`PADDLE_CLIENT_TOKEN` (token pubblico, sicuro da esporre come la
+publishable key di Stripe: autorizza solo l'apertura del checkout,
+non movimenti di denaro) con quello reale dalla Dashboard Paddle
+(Developer Tools → Authentication), e impostare `PADDLE_ENVIRONMENT` a
+`'production'` quando si passa a chiavi live (di default è
+`'sandbox'`). Finché `PADDLE_CLIENT_TOKEN` resta il placeholder,
+`initPaddle()` non inizializza Paddle.js: nessun rischio di aprire un
+checkout con un token invalido.
+
+**6. Passaggio a "live"** — quando si è pronti a incassare davvero:
+ripetere i punti 1-5 con le chiavi live Paddle (account verificato,
+inclusa la verifica business di Paddle stesso in quanto Merchant of
+Record), e solo a quel punto togliere il badge "IN ARRIVO" dalla card
+Pro su `index.html`.
 
 ## Promemoria automatici via email
 
