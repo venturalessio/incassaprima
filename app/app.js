@@ -241,6 +241,7 @@ import { computeStudioBilling } from './lib/billing.js';
         await loadCloudData();
       }
       setStatus(`Cloud attivo · ${state.session.user.email}`, 'success');
+      detectCheckoutReturn();
     } else {
       setStatus('Modalità locale. Accedi per salvare nel cloud.', 'info');
       if (state.pendingInviteToken) {
@@ -269,6 +270,30 @@ import { computeStudioBilling } from './lib/billing.js';
     }
 
     state.pendingInvitePreview = (data && data[0]) || null;
+  }
+
+  // Rileva il ritorno da Stripe Checkout (?checkout=success|cancelled),
+  // mostra un avviso e ricarica i dati dell'organizzazione dopo una breve
+  // attesa (il webhook che aggiorna il piano arriva in modo asincrono,
+  // di solito entro pochi secondi dal redirect).
+  function detectCheckoutReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (!checkout) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    window.history.replaceState({}, '', url);
+
+    if (checkout === 'success') {
+      toast('Pagamento completato! Aggiornamento del piano in corso…');
+      setTimeout(async () => {
+        await loadCloudData();
+        toast('Piano aggiornato.');
+      }, 1500);
+    } else if (checkout === 'cancelled') {
+      toast('Pagamento annullato: nessun addebito effettuato.');
+    }
   }
 
   function openAuthForInvite() {
@@ -2867,10 +2892,104 @@ import { computeStudioBilling } from './lib/billing.js';
 
   function openPlans() {
     $('plansBack').style.display = 'flex';
+    renderPlansUpgradeArea();
   }
 
   function closePlans() {
     $('plansBack').style.display = 'none';
+  }
+
+  // Mostra, nel modal Piani, l'azione utile in base a chi sta guardando:
+  // niente se non è loggato o sta guardando un'azienda gestita (il piano
+  // si gestisce sempre dalla propria organizzazione/identità, non da lì),
+  // altrimenti un pulsante per passare a Pro (checkout Stripe) o per
+  // gestire un abbonamento già attivo.
+  function renderPlansUpgradeArea() {
+    const area = $('plansUpgradeArea');
+    if (!area) return;
+
+    const org = state.organization;
+    if (!state.session || !org) {
+      area.innerHTML = '';
+      return;
+    }
+
+    const isManaged = Boolean(org.managed_by);
+    const canManageBilling = myRole() === 'owner' && !isManaged;
+
+    if (!canManageBilling) {
+      area.innerHTML = '';
+      return;
+    }
+
+    if (org.plan === 'free') {
+      area.innerHTML = `
+        <div class="recommendation" style="margin:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>Sei sul piano Free su <strong>${escapeHtml(org.name)}</strong>.</span>
+          <button type="button" id="upgradeToProBtn" class="small">Passa a Pro — €9/mese</button>
+        </div>
+        <p class="smallhint">Per il piano Studio, contattaci: <a href="mailto:ventura.alessio@gmail.com">ventura.alessio@gmail.com</a>.</p>`;
+    } else {
+      area.innerHTML = `
+        <div class="recommendation" style="margin:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>Sei sul piano <strong>${org.plan === 'studio' ? 'Studio' : 'Pro'}</strong> su <strong>${escapeHtml(org.name)}</strong>.</span>
+          <button type="button" id="manageBillingBtn" class="small secondary">Gestisci abbonamento</button>
+        </div>`;
+    }
+  }
+
+  // Legge un messaggio d'errore leggibile da una risposta non-2xx di una
+  // funzione Edge invocata con supabase.functions.invoke(): il body JSON
+  // con { error: '...' } che restituiamo noi non finisce in `data` ma va
+  // letto da error.context (una Response), se presente.
+  async function extractFunctionErrorMessage(error) {
+    if (error?.context && typeof error.context.json === 'function') {
+      try {
+        const body = await error.context.json();
+        if (body?.error) return body.error;
+      } catch {
+        // corpo non JSON: usa il messaggio generico sotto
+      }
+    }
+    return error?.message || 'Errore sconosciuto.';
+  }
+
+  async function upgradeToProCheckout() {
+    if (!state.session || !state.organization) return;
+
+    const { data, error } = await state.supabase.functions.invoke('create-checkout-session', {
+      body: { plan: 'pro', organization_id: state.organization.id }
+    });
+
+    if (error) {
+      toast(`Impossibile avviare il pagamento: ${await extractFunctionErrorMessage(error)}`);
+      return;
+    }
+
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      toast('Risposta inattesa dal server di pagamento.');
+    }
+  }
+
+  async function openBillingPortal() {
+    if (!state.session || !state.organization) return;
+
+    const { data, error } = await state.supabase.functions.invoke('create-portal-session', {
+      body: { organization_id: state.organization.id }
+    });
+
+    if (error) {
+      toast(`Impossibile aprire la gestione abbonamento: ${await extractFunctionErrorMessage(error)}`);
+      return;
+    }
+
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      toast('Risposta inattesa dal server di pagamento.');
+    }
   }
 
   function closeCustomers() {
@@ -3743,10 +3862,18 @@ import { computeStudioBilling } from './lib/billing.js';
         $('studioAddCompanyBtn').click();
       }
     });
+    $('plansBtn').addEventListener('click', openPlans);
     $('closePlansBtn').addEventListener('click', closePlans);
     $('closePlansActionBtn').addEventListener('click', closePlans);
     $('plansBack').addEventListener('click', (event) => {
       if (event.target === $('plansBack')) closePlans();
+    });
+    $('plansUpgradeArea').addEventListener('click', (event) => {
+      if (event.target.closest('#upgradeToProBtn')) {
+        upgradeToProCheckout();
+      } else if (event.target.closest('#manageBillingBtn')) {
+        openBillingPortal();
+      }
     });
     $('closeRulesBtn').addEventListener('click', closeRules);
     $('closeGuideBtn').addEventListener('click', closeGuide);
