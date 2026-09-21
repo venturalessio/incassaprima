@@ -115,6 +115,95 @@ policy dedicata per la lettura/scrittura di clienti e fatture.
   da `anon`/`authenticated` (per pulizia: essendo `returns trigger`,
   Postgres rifiuta comunque di eseguirla fuori da un trigger, quindi non
   è mai stata realmente invocabile via RPC).
+- `20260921083908` — aggiunge a `organizations` le colonne
+  `stripe_customer_id`, `stripe_subscription_id` (bloccate: nessun
+  grant a `anon`/`authenticated`, solo `service_role` le legge/scrive)
+  e `stripe_subscription_status` (leggibile dai membri
+  dell'organizzazione, stessa RLS già esistente). Ne approfitta per
+  ripulire un grant residuo: `anon` aveva ancora `UPDATE` su `plan`
+  a livello di colonna (mai sfruttabile in pratica, dato che le RLS di
+  `organizations` richiedono `is_organization_owner()` che per `anon`
+  è sempre falso — comunque corretto per coerenza con `authenticated`,
+  che ha `UPDATE` solo su `name`).
+- `20260921083944` — aggiunge `upgrade_to_studio` (`SECURITY DEFINER`,
+  **solo `service_role`**): converte un'organizzazione Free/Pro in
+  Studio creando una nuova identità e riassegnando l'organizzazione
+  esistente come sua prima azienda gestita — lo stesso intervento fatto
+  a mano in passato (vedi ROADMAP.md), ora richiamabile in modo
+  sicuro. Riceve `acting_user_id` esplicito perché va chiamata da un
+  contesto server-side (non da `auth.uid()` di un utente loggato): se
+  fosse chiamabile dal client, chiunque potrebbe auto-promuoversi a
+  Studio gratis.
+
+## Pagamenti reali (Stripe)
+
+Tre funzioni Edge per l'integrazione Stripe, verificate dal vivo (guardia
+di autenticazione, fail-closed senza chiavi configurate) ma non ancora
+testabili end-to-end da questa sessione: servono le chiavi Stripe del
+progetto reale, che vanno impostate come secret e mai condivise in chat
+o versionate nel repository.
+
+- **`create-checkout-session`** (`verify_jwt=true`): chiamata da un
+  utente loggato per passare al piano Pro. Crea (o riusa) il Customer
+  Stripe dell'organizzazione e una Checkout Session in modalità
+  abbonamento. **Solo il piano Pro è offerto in self-service**: Studio
+  richiede una ristrutturazione dei dati (vedi `upgrade_to_studio` sopra)
+  che per ora resta ad attivazione manuale/semi-manuale (link di
+  pagamento Stripe creato a mano dopo una conversazione, poi lo stesso
+  intervento di conversione già documentato).
+- **`create-portal-session`** (`verify_jwt=true`): apre il Billing
+  Portal Stripe (gestione metodo di pagamento, fatture, annullamento
+  self-service) per l'organizzazione del chiamante.
+- **`stripe-webhook`** (`verify_jwt=false`, autenticata verificando la
+  firma della richiesta con `STRIPE_WEBHOOK_SECRET`): riceve
+  `checkout.session.completed` (attiva il piano Pro),
+  `customer.subscription.updated` (aggiorna lo stato; se lo stato
+  diventa `canceled`/`unpaid`/`incomplete_expired` torna al piano Free
+  — `past_due`, cioè un tentativo di addebito in corso di ripetizione,
+  **non** fa scattare il downgrade) e `customer.subscription.deleted`
+  (torna al piano Free).
+
+### Configurazione richiesta (manuale, fuori dalla portata di questa sessione)
+
+**1. Account Stripe** — crearne uno se non esiste già, partendo in
+**modalità test** (le chiavi test iniziano con `sk_test_`/`pk_test_`,
+nessun rischio di addebiti reali finché non si passa in modalità live).
+
+**2. Prodotto e prezzo Pro** — dalla Dashboard Stripe (Product catalog):
+crea un prodotto "IncassaPrima Pro" con un prezzo ricorrente mensile di
+€9, e copia l'ID del prezzo (`price_...`).
+
+**3. Endpoint webhook** — dalla Dashboard Stripe (Developers → Webhooks),
+aggiungi un endpoint con URL
+`https://dxlmtihwvcqstrxwzapj.supabase.co/functions/v1/stripe-webhook`,
+eventi da ascoltare: `checkout.session.completed`,
+`customer.subscription.updated`, `customer.subscription.deleted`. Copia
+il signing secret (`whsec_...`).
+
+**4. Secret delle funzioni Edge** — dalla Dashboard Supabase (Project
+Settings → Edge Functions → Secrets), o via CLI, impostare su **tutte e
+tre** le funzioni (i secret sono condivisi a livello di progetto):
+
+- `STRIPE_SECRET_KEY` — la chiave segreta Stripe (test o live).
+- `STRIPE_PRICE_ID_PRO` — l'ID del prezzo Pro creato al punto 2.
+- `STRIPE_WEBHOOK_SECRET` — il signing secret del webhook creato al
+  punto 3.
+- `APP_URL` — opzionale, default
+  `https://venturalessio.github.io/incassaprima/app/` (dove Stripe
+  reindirizza dopo il checkout/portale). Da impostare solo se l'app
+  verrà servita da un altro dominio.
+
+Finché `STRIPE_SECRET_KEY`/`STRIPE_PRICE_ID_PRO` non sono impostate,
+`create-checkout-session` risponde con un errore gestito (503,
+"pagamenti non ancora configurati") invece di fallire in modo oscuro:
+sicuro da aver distribuito le funzioni in anticipo. Stesso discorso per
+`stripe-webhook` senza `STRIPE_WEBHOOK_SECRET` — verificato dal vivo
+che risponde 503 invece di accettare richieste non firmate.
+
+**5. Passaggio a "live"** — quando si è pronti a incassare davvero:
+ripetere i punti 1-4 con le chiavi live Stripe (account verificato con
+dati bancari), e solo a quel punto togliere il badge "IN ARRIVO" dalla
+card Pro su `index.html`.
 
 ## Promemoria automatici via email
 
