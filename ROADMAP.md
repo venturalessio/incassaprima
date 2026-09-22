@@ -24,6 +24,17 @@ sessioni di sviluppo.
   modal Piani in-app riscritti per riflettere esattamente le funzionalità
   reali di Free/Pro/Studio (aggiunta anche la card Studio, prima assente
   dalla landing pubblica).
+- ~~**Landing: CTA Studio verso il form di richiesta**~~ Fatto il
+  22/09/2026: con Studio ora self-service (vedi sopra), il CTA "Voglio
+  testare Studio" puntava ancora al form "lascia i tuoi dati, ti
+  contattiamo noi per attivare Studio" — fuorviante, dato che basta
+  creare un account gratis nell'app e passare a Studio dal modal Piani
+  senza aspettare nessuno. Cambiato il link della card Studio su
+  `index.html` da `#richiedi-accesso` ad `app/` (come Pro), e riscritta
+  la sezione del form da "STUDIO SU RICHIESTA" a un contatto generico
+  ("Hai domande?"). Rimosso anche il piccolo script che precompilava il
+  campo "Piano di interesse" del form al click sulla card Studio,
+  ormai senza più nessun link che lo attivi.
 - ~~**Blocco analytics/aging**~~ Fatto il 20/09/2026: la logica di
   calcolo (fasce di anzianità, top debitori) è stata estratta in
   `app/lib/analytics.js` (`computeAnalytics`), con 5 nuovi test;
