@@ -215,6 +215,15 @@ import { computeStudioBilling } from './lib/billing.js';
     if (exportBtn) exportBtn.style.display = paid ? 'inline-block' : 'none';
     const importLabel = $('importFile')?.closest('label');
     if (importLabel) importLabel.style.display = paid ? 'inline-block' : 'none';
+
+    // Etichetta del piano in header: riferimento visivo immediato su
+    // quale piano è attivo (Free/Pro/Studio), non sempre "Pro" come prima.
+    const planLabelEl = $('planLabel');
+    if (planLabelEl) {
+      const { text, color } = planLabel();
+      planLabelEl.textContent = text;
+      planLabelEl.style.color = color;
+    }
   }
 
   // Vero per chi ha accesso alle funzionalità Pro/Studio (Regole
@@ -227,6 +236,17 @@ import { computeStudioBilling } from './lib/billing.js';
     const org = state.organization;
     if (!org) return false;
     return org.plan === 'pro' || org.plan === 'studio' || Boolean(org.managed_by);
+  }
+
+  // Etichetta del piano mostrata in header (accanto a "IncassaPrima"):
+  // un'azienda gestita mostra "Studio" come l'identità che la gestisce,
+  // non "Free" (il proprio org.plan), coerentemente con hasPaidFeatures().
+  function planLabel() {
+    const org = state.organization;
+    if (!org) return { text: 'Free', color: 'var(--muted)' };
+    if (org.plan === 'studio' || org.managed_by) return { text: 'Studio', color: 'var(--violet)' };
+    if (org.plan === 'pro') return { text: 'Pro', color: 'var(--blue)' };
+    return { text: 'Free', color: 'var(--muted)' };
   }
 
   // Ruolo del membro corrente nell'organizzazione attualmente aperta
