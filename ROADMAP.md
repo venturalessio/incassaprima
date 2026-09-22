@@ -6,6 +6,18 @@ sessioni di sviluppo.
 
 ## Debiti tecnici / bug noti
 
+- **Nessun gating reale delle funzionalità per piano.** Scoperto il
+  22/09/2026 testando un account tornato a `plan='free'`: Regole
+  automatiche, Analisi incassi, import/export e in generale l'accesso
+  cloud multi-dispositivo (tutte pensate come Pro/Studio, vedi
+  `app/index.html` e la landing) restano **completamente accessibili**
+  a un utente Free loggato. Verificato che non esiste alcun controllo
+  su `org.plan` né in `app/app.js`/`app/lib/*.js` (a parte i due usi
+  per il badge Studio e il contenuto del modal Piani) né nelle policy
+  RLS su Postgres (nessuna policy referenzia `plan`). Oggi il piano a
+  pagamento non sblocca né limita nulla dal punto di vista tecnico —
+  **priorità alta**, prossimo lavoro pianificato subito dopo il
+  collaudo del checkout Studio.
 - **Migrazione Pro → Studio con dati già esistenti.** Se un'organizzazione
   che ha già clienti/fatture viene promossa a `plan = 'studio'`, quei dati
   restano "intrappolati" nell'identità Studio (che l'app non carica più
@@ -75,8 +87,8 @@ sessioni di sviluppo.
     partita IVA aperta. **Attenzione**: un MoR non elimina l'obbligo
     fiscale sul reddito percepito dai payout — da concordare comunque
     con un commercialista, vedi punto "Partita IVA" sotto.
-  - ~~**Studio self-service**~~ Fatto il 22/09/2026 (codice e test DB;
-    **ancora da attivare in produzione**, vedi sotto). Checkout iniziale
+  - ~~**Studio self-service**~~ Fatto e **verificato end-to-end con un
+    acquisto vero il 22/09/2026** (vedi sotto). Checkout iniziale
     Studio con lo stesso circuito di Pro: `create-paddle-transaction`
     accetta `plan: 'studio'` e crea la transazione con il solo prezzo
     base (quantity 1) — `upgrade_to_studio` parte sempre da 1 azienda
@@ -95,18 +107,32 @@ sessioni di sviluppo.
     automatica di dati. In-app: modal Piani offre "Passa a Studio —
     €19/mese" accanto a "Passa a Pro"/"Gestisci abbonamento", a seconda
     del piano corrente.
-    - **Testato solo a livello di database** (organizzazione e utente
-      usa e getta, creati e poi eliminati): `upgrade_to_studio` +
-      aggiornamento `paddle_*` sulla nuova identità producono esattamente
-      il risultato atteso. **Non ancora ripetuto il test end-to-end via
-      HTTP** con firma webhook reale (serve `PADDLE_WEBHOOK_SECRET` in
-      chiaro, non disponibile in sessione dopo un compattamento) né un
-      acquisto vero in sandbox dall'app. **Prima di annunciare Studio
-      come acquistabile**, va impostato il secret
-      `PADDLE_PRICE_ID_STUDIO` (mancante finché non impostato a mano —
-      finché manca, `create-paddle-transaction` risponde 503 per
-      `plan: 'studio'` mentre Pro continua a funzionare) e ripetuto lo
-      stesso collaudo con acquisto reale in sandbox già fatto per Pro.
+    - **Collaudo in due fasi**: prima verificata a livello di database
+      (organizzazione e utente usa e getta, creati e poi eliminati)
+      la logica `upgrade_to_studio` + aggiornamento `paddle_*` sulla
+      nuova identità — risultato corretto. Poi, impostato il secret
+      `PADDLE_PRICE_ID_STUDIO` (live), **acquisto Studio vero (€19) fatto
+      dall'app** con l'account di test: pagamento completato, email di
+      conferma con fattura ricevuta da Paddle, piano passato
+      correttamente a Studio sulla nuova organizzazione identità,
+      organizzazione di partenza riassegnata come azienda gestita.
+      Circuito end-to-end confermato: checkout → pagamento →
+      webhook → `upgrade_to_studio`. Abbonamento di test poi annullato
+      dal Customer Portal Paddle (resta `active` fino a fine periodo
+      già pagato — stesso comportamento già visto con Pro, il downgrade
+      a Free scatterà automaticamente al termine).
+    - **Bug scoperto durante questo collaudo (non nel codice nuovo)**:
+      l'organizzazione di test usata per il primissimo collaudo Pro in
+      sandbox aveva ancora `paddle_customer_id`/`paddle_subscription_id`
+      sandbox residui nel database dopo il passaggio a Paddle live.
+      `create-paddle-transaction` li passava correttamente a Paddle
+      (comportamento voluto: riusa il customer esistente), ma Paddle
+      live rispondeva `404 customer not found` perché quell'id esisteva
+      solo in sandbox — da qui un primo tentativo fallito ("impossibile
+      avviare il pagamento"). Risolto ripulendo a mano i campi `paddle_*`
+      residui su quella singola organizzazione (query mirata, nessuna
+      modifica di codice necessaria: non è un problema che si ripresenta
+      per organizzazioni create direttamente in live).
     **Catalogo** (22/09/2026, sandbox e live): prodotto "IncassaPrima
     Studio" con due prezzi separati, combinati sulla stessa
     transazione — Paddle non supporta prezzi a scaglioni in un unico
