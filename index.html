@@ -309,7 +309,7 @@
             <li>Vista aggregata su tutte le aziende gestite</li>
           </ul>
 
-          <a class="button button-outline-dark" href="#richiedi-accesso" data-plan="Studio">
+          <a class="button button-outline-dark" href="app/">
             Voglio testare Studio
           </a>
         </article>
@@ -318,9 +318,9 @@
 
     <section id="richiedi-accesso" class="request-section">
       <div class="section-intro centered">
-        <p class="eyebrow">STUDIO SU RICHIESTA</p>
-        <h2>Lascia i tuoi dati, ti contattiamo noi per attivare Studio.</h2>
-        <p>Niente automatismi: rispondiamo di persona, di solito entro 1-2 giorni lavorativi. Vale anche per qualsiasi domanda sul piano Pro.</p>
+        <p class="eyebrow">HAI DOMANDE?</p>
+        <h2>Scrivici, rispondiamo di persona.</h2>
+        <p>Pro e Studio si attivano subito dall'app, nessuna attesa: questo modulo serve solo se hai dubbi prima di iniziare. Rispondiamo di solito entro 1-2 giorni lavorativi.</p>
       </div>
 
       <form
@@ -465,12 +465,6 @@
       navigator.serviceWorker.register("service-worker.js");
     }
 
-    document.querySelectorAll('a[data-plan]').forEach((link) => {
-      link.addEventListener('click', () => {
-        const select = document.getElementById('requestPlanSelect');
-        if (select) select.value = link.dataset.plan;
-      });
-    });
   </script>
 </body>
 </html>
