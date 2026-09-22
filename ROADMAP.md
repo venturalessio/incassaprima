@@ -90,6 +90,22 @@ sessioni di sviluppo.
     link" (URL completo, dominio approvato) in Checkout Settings su
     Paddle, altrimenti la creazione di transazioni fallisce — da
     rifare anche sull'account live.
+  - ~~**Attivazione account live**~~ Fatto il 22/09/2026: **IncassaPrima
+    Pro è ora acquistabile per davvero**. Passaggio a "Live" su Paddle,
+    stessa configurazione rifatta (prodotto/prezzo/webhook/chiavi/
+    default payment link). Superati due ostacoli non ovvi:
+    (1) `transaction_checkout_not_enabled` finché non si completa la
+    verifica venditore di Paddle (dati bancari, verifica identità,
+    verifica del sito) — Paddle richiede anche una vera politica di
+    rimborso pubblica, aggiunta a `termini.html`; (2) la verifica del
+    dominio falliva perché `venturalessio.github.io` (radice) dà 404 —
+    il sito vive sotto `/incassaprima/`. Risolto creando il repository
+    `venturalessio/venturalessio.github.io` con un redirect alla radice
+    verso `/incassaprima/` (non limita la pubblicazione di altre app
+    future, che restano comunque raggiungibili al proprio percorso).
+    Verificato dal vivo: creazione transazione contro `api.paddle.com`
+    (non sandbox) riuscita con successo (201), badge "IN ARRIVO" tolto
+    dalla card Pro, dati di payout (bonifico) confermati da Paddle.
   - **Partita IVA**: decisioni prese il 20/09/2026 dopo una ricerca di
     mercato. L'utente **non ha ancora partita IVA**; per un abbonamento
     ricorrente la "prestazione occasionale" non è percorribile (rischio
