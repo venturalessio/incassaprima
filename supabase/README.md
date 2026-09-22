@@ -159,22 +159,31 @@ da `npm:@paddle/paddle-node-sdk`, la cui compatibilità con Deno non era
 verificabile da questa sessione), e la firma dei webhook è verificata a
 mano con `crypto.subtle` (Web Crypto, nativo in Deno).
 
-**Checkout self-service Studio aggiunto il 22/09/2026**: stessa
-`create-paddle-transaction`/`paddle-webhook`, estese per accettare
-anche `target_plan === 'studio'` (vedi sopra). La logica nuova — la
-chiamata a `upgrade_to_studio` seguita dall'aggiornamento dei campi
-`paddle_*` sulla organizzazione identità restituita — è stata
-verificata **a livello di database** con un'organizzazione e un utente
-di test usa e getta (creati, verificati, poi eliminati): risultato
-esattamente quello atteso (organizzazione di partenza →
-`managed_by`/`plan='free'`, nuova organizzazione identità →
-`plan='studio'` con i campi `paddle_*` impostati). Non è stato invece
-ripetuto il test end-to-end via HTTP con firma webhook reale (serve il
-`PADDLE_WEBHOOK_SECRET` in chiaro, non disponibile in questa sessione
-dopo un compattamento della conversazione): **prima di considerare
-Studio pronto per clienti reali, va fatto un acquisto vero in sandbox
-dall'app** (stesso collaudo già fatto per Pro), impostando prima
-`PADDLE_PRICE_ID_STUDIO` come secret.
+**Checkout self-service Studio aggiunto e verificato end-to-end il
+22/09/2026**: stessa `create-paddle-transaction`/`paddle-webhook`,
+estese per accettare anche `target_plan === 'studio'` (vedi sopra). La
+logica nuova — la chiamata a `upgrade_to_studio` seguita
+dall'aggiornamento dei campi `paddle_*` sulla organizzazione identità
+restituita — è stata verificata prima **a livello di database** con
+un'organizzazione e un utente di test usa e getta (creati, verificati,
+poi eliminati), poi con un **acquisto Studio vero (€19) fatto
+dall'app** dopo aver impostato il secret `PADDLE_PRICE_ID_STUDIO`:
+pagamento completato, email di conferma con fattura da Paddle, piano
+passato correttamente a Studio sulla nuova organizzazione identità,
+organizzazione di partenza riassegnata come azienda gestita. Circuito
+end-to-end confermato: checkout → pagamento → webhook →
+`upgrade_to_studio`. Abbonamento di test poi annullato dal Customer
+Portal (resta `active` fino a fine periodo già pagato, stesso
+comportamento del downgrade Pro).
+
+Durante questo collaudo è emerso un problema **non legato al codice
+nuovo**: l'organizzazione di test del primissimo collaudo Pro in
+sandbox aveva ancora `paddle_customer_id` sandbox residuo nel database
+dopo il passaggio a Paddle live — Paddle live rispondeva `404 customer
+not found` quando la funzione provava a riusarlo. Risolto ripulendo a
+mano i campi `paddle_*` di quella singola organizzazione: non è un
+problema che si presenta per organizzazioni create direttamente in
+live.
 
 **Nota per il passaggio a "live"**: l'account Paddle richiede anche un
 **"Default payment link"** impostato (Checkout → Checkout Settings →
