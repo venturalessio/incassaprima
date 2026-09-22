@@ -31,12 +31,14 @@ sessioni di sviluppo.
   `openTeam`, `exportCsv`, `importFile`), con un toast che rimanda al
   modal Piani. "Rileva duplicati" resta sempre visibile (è una
   funzionalità Free). Verificato con Playwright in modalità locale
-  (nessun login): tutti i pulsanti Pro/Studio correttamente nascosti,
-  nessun errore introdotto. **Resta da fare**: verificare visivamente
-  anche il caso "loggato ma piano Free" con un vero account cloud (non
-  disponibile un account di test in questo stato durante questa
-  sessione — quelli esistenti sono tutti Pro/Studio o aziende gestite)
-  e valutare se/quando aggiungere anche policy RLS lato server.
+  (nessun login) e poi **dal vivo con un account cloud Free reale**
+  (nuova registrazione `ventura.alessio+free@gmail.com`, confermata
+  via email dall'utente): barra ridotta a
+  Guida/Piani/"Esci dal cloud"/"Rileva duplicati"/"Azzera dati locali",
+  nessun pulsante Pro/Studio visibile — confermato anche sul database
+  (`plan='free'`, `managed_by=null`, come atteso per una registrazione
+  nuova). **Resta da fare**: valutare se/quando aggiungere anche policy
+  RLS lato server, per ora accettato come rischio noto.
 - **Migrazione Pro → Studio con dati già esistenti.** Se un'organizzazione
   che ha già clienti/fatture viene promossa a `plan = 'studio'`, quei dati
   restano "intrappolati" nell'identità Studio (che l'app non carica più
