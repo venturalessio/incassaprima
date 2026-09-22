@@ -6,6 +6,17 @@ sessioni di sviluppo.
 
 ## Debiti tecnici / bug noti
 
+- ~~**Header sempre "IncassaPrima Pro"**~~ Fatto il 22/09/2026: la
+  scritta in alto a sinistra era statica, "Pro" per chiunque a
+  prescindere dal piano reale. Aggiunta `planLabel()` in `app/app.js`
+  (stessa logica di `hasPaidFeatures()`: un'azienda gestita da
+  un'identità Studio mostra "Studio", non il proprio `org.plan` che è
+  sempre `'free'`) e collegata a `updateFeaturesByPlan()`, già la
+  funzione centrale chiamata a ogni cambio di sessione/organizzazione.
+  Testo e colore cambiano tra Free (grigio, `var(--muted)`), Pro (blu,
+  `var(--blue)`) e Studio (viola, `var(--violet)`) — riferimento visivo
+  immediato sul piano attivo. Verificato con Playwright in modalità
+  locale: mostra "Free" in grigio, come atteso.
 - ~~**Nessun gating reale delle funzionalità per piano.**~~ Scoperto e
   **risolto lato client il 22/09/2026**. Scoperto testando un account
   tornato a `plan='free'`: Regole automatiche, Analisi incassi,
