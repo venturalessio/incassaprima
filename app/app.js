@@ -203,12 +203,30 @@ import { computeStudioBilling } from './lib/billing.js';
       studioBtn.style.display = state.isStudioAccount ? 'inline-block' : 'none';
     }
 
-    // Team: visibile per qualunque account cloud (piano Pro o Studio),
-    // non per la modalità locale.
-    const teamBtn = $('teamBtn');
-    if (teamBtn) {
-      teamBtn.style.display = state.session ? 'inline-block' : 'none';
-    }
+    // Regole automatiche, coda di approvazione, Analisi incassi,
+    // anagrafica Clienti, import/export, Team: funzionalità Pro/Studio,
+    // nascoste per un'organizzazione sul piano Free (locale o cloud).
+    const paid = hasPaidFeatures();
+    ['rulesBtn', 'approvalBtn', 'analyticsBtn', 'customersBtn', 'teamBtn'].forEach((id) => {
+      const el = $(id);
+      if (el) el.style.display = paid ? 'inline-block' : 'none';
+    });
+    const exportBtn = $('exportBtn');
+    if (exportBtn) exportBtn.style.display = paid ? 'inline-block' : 'none';
+    const importLabel = $('importFile')?.closest('label');
+    if (importLabel) importLabel.style.display = paid ? 'inline-block' : 'none';
+  }
+
+  // Vero per chi ha accesso alle funzionalità Pro/Studio (Regole
+  // automatiche, Analisi incassi, import/export, anagrafica Clienti,
+  // Team): l'organizzazione aperta è direttamente Pro/Studio, oppure è
+  // un'azienda gestita da un'identità Studio (managed_by impostato) —
+  // in quel caso l'accesso arriva dall'abbonamento dell'identità, non
+  // dal proprio piano (che per un'azienda gestita è sempre 'free').
+  function hasPaidFeatures() {
+    const org = state.organization;
+    if (!org) return false;
+    return org.plan === 'pro' || org.plan === 'studio' || Boolean(org.managed_by);
   }
 
   // Ruolo del membro corrente nell'organizzazione attualmente aperta
@@ -704,6 +722,10 @@ import { computeStudioBilling } from './lib/billing.js';
     }
     if (state.isStudioAccount && !state.organization) {
       openStudio();
+      return;
+    }
+    if (!hasPaidFeatures()) {
+      toast('Gli inviti al team sono una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
       return;
     }
     $('teamBack').style.display = 'flex';
@@ -1526,6 +1548,10 @@ import { computeStudioBilling } from './lib/billing.js';
       toast('Accedi al cloud per esportare le fatture in CSV. È una funzionalità del piano Pro.');
       return;
     }
+    if (!hasPaidFeatures()) {
+      toast('L’esportazione CSV è una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
+      return;
+    }
 
     const header = ['cliente', 'numero_fattura', 'importo_euro', 'scadenza', 'email', 'stato'];
     const rows = state.invoices.map((invoice) => [
@@ -1626,6 +1652,11 @@ import { computeStudioBilling } from './lib/billing.js';
     if (state.isStudioAccount && !state.organization) {
       toast('Seleziona prima un\'azienda dalla dashboard Studio.');
       openStudio();
+      return;
+    }
+
+    if (!hasPaidFeatures()) {
+      toast('L’importazione file è una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
       return;
     }
 
@@ -2875,6 +2906,10 @@ import { computeStudioBilling } from './lib/billing.js';
       openStudio();
       return;
     }
+    if (!hasPaidFeatures()) {
+      toast('L’anagrafica clienti è una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
+      return;
+    }
     $('customerSearch').value = '';
     $('customersBack').style.display = 'flex';
     renderCustomers();
@@ -3506,6 +3541,10 @@ import { computeStudioBilling } from './lib/billing.js';
       toast('Accedi al cloud per visualizzare i solleciti da approvare.');
       return;
     }
+    if (!hasPaidFeatures()) {
+      toast('Le regole di sollecito automatiche sono una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
+      return;
+    }
 
     await loadScheduledReminders();
     $('approvalBack').style.display = 'flex';
@@ -3523,6 +3562,10 @@ import { computeStudioBilling } from './lib/billing.js';
     }
     if (state.isStudioAccount && !state.organization) {
       openStudio();
+      return;
+    }
+    if (!hasPaidFeatures()) {
+      toast('L’Analisi incassi è una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
       return;
     }
 
@@ -3773,6 +3816,10 @@ import { computeStudioBilling } from './lib/billing.js';
   function openRules() {
     if (!state.session || !state.organization) {
       toast('Accedi al cloud per modificare le regole di sollecito.');
+      return;
+    }
+    if (!hasPaidFeatures()) {
+      toast('Le regole di sollecito automatiche sono una funzionalità Pro. Passa a Pro o Studio dal modal Piani.');
       return;
     }
 
