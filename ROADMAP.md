@@ -77,6 +77,23 @@ sessioni di sviluppo.
     Studio nel webhook, e ricollegare la quantity extra-aziende
     (vedi `app/lib/billing.js`) a una quantity reale sulla transazione
     Paddle (supporto nativo multi-seat/quantity).
+    **Catalogo già pronto** (22/09/2026, sandbox e live): prodotto
+    "IncassaPrima Studio" con due prezzi separati, combinati sulla
+    stessa transazione — Paddle non supporta prezzi a scaglioni in un
+    unico oggetto. Prezzo base (`€19,00/mese`, quantità fissa 1) +
+    prezzo azienda extra (`€5,00/mese`, quantità = aziende oltre le 3
+    incluse, omesso dalla transazione se 0). Verificato dal vivo in
+    sandbox: transazione con base + 2 extra → totale `€29,00`, corretto.
+    ID prezzi:
+    - Sandbox: base `pri_01m34bmjf5awf0tg5y5715g6d1`, extra
+      `pri_01m34bpg67ma4xsecqggd5xhpe`.
+    - Live: base `pri_01m34btwe2mje622eg51y79yge`, extra
+      `pri_01m34bvvdd3nds12psqnfv1kj5`.
+    Manca ancora tutta la parte applicativa: funzione Edge che calcola
+    gli item dinamicamente da `computeStudioBilling`, gestione
+    `subscription.created`/`updated` per Studio nel webhook (che deve
+    chiamare `upgrade_to_studio` invece di un semplice update), e la UI
+    nel modal Studio per avviare il checkout.
   - ~~**Configurazione e test sandbox**~~ Fatto il 21/09/2026: account
     Paddle sandbox creato, prodotto/prezzo Pro configurato, webhook
     collegato, i 4 secret impostati (`PADDLE_API_KEY`,
