@@ -6,18 +6,37 @@ sessioni di sviluppo.
 
 ## Debiti tecnici / bug noti
 
-- **Nessun gating reale delle funzionalità per piano.** Scoperto il
-  22/09/2026 testando un account tornato a `plan='free'`: Regole
-  automatiche, Analisi incassi, import/export e in generale l'accesso
-  cloud multi-dispositivo (tutte pensate come Pro/Studio, vedi
-  `app/index.html` e la landing) restano **completamente accessibili**
-  a un utente Free loggato. Verificato che non esiste alcun controllo
-  su `org.plan` né in `app/app.js`/`app/lib/*.js` (a parte i due usi
-  per il badge Studio e il contenuto del modal Piani) né nelle policy
-  RLS su Postgres (nessuna policy referenzia `plan`). Oggi il piano a
-  pagamento non sblocca né limita nulla dal punto di vista tecnico —
-  **priorità alta**, prossimo lavoro pianificato subito dopo il
-  collaudo del checkout Studio.
+- ~~**Nessun gating reale delle funzionalità per piano.**~~ Scoperto e
+  **risolto lato client il 22/09/2026**. Scoperto testando un account
+  tornato a `plan='free'`: Regole automatiche, Analisi incassi,
+  import/export e anagrafica Clienti (tutte pensate come Pro/Studio,
+  vedi `app/index.html` e la landing) restavano completamente
+  accessibili a un utente Free loggato — nessun controllo su `org.plan`
+  esisteva in `app/app.js`/`app/lib/*.js` (a parte i due usi per il
+  badge Studio e il modal Piani), né nelle policy RLS su Postgres.
+  Deciso con l'utente: (1) il sync cloud base resta disponibile a
+  tutti gli utenti loggati anche Free (solo fatture/scadenze/3 modelli
+  sollecito/rilevamento duplicati); (2) il gating per ora è **solo lato
+  client** (niente RLS), accettando che un utente esperto possa
+  aggirarlo da console — nessun dato sensibile è comunque in gioco,
+  le RLS esistenti restano invariate. Aggiunto `hasPaidFeatures()`
+  (`org.plan === 'pro' || 'studio'` oppure `org.managed_by` impostato,
+  così un'azienda gestita da un'identità Studio eredita l'accesso
+  dall'abbonamento dell'identità) e usato per: nascondere i pulsanti
+  Regole/coda di approvazione/Analisi incassi/Clienti/Team/Esporta
+  CSV/Importa file (`updateFeaturesByPlan()`, già la funzione centrale
+  chiamata a ogni cambio di sessione/organizzazione) **e** come
+  guardia difensiva dentro ognuna delle funzioni corrispondenti
+  (`openRules`, `openApprovalQueue`, `openAnalytics`, `openCustomers`,
+  `openTeam`, `exportCsv`, `importFile`), con un toast che rimanda al
+  modal Piani. "Rileva duplicati" resta sempre visibile (è una
+  funzionalità Free). Verificato con Playwright in modalità locale
+  (nessun login): tutti i pulsanti Pro/Studio correttamente nascosti,
+  nessun errore introdotto. **Resta da fare**: verificare visivamente
+  anche il caso "loggato ma piano Free" con un vero account cloud (non
+  disponibile un account di test in questo stato durante questa
+  sessione — quelli esistenti sono tutti Pro/Studio o aziende gestite)
+  e valutare se/quando aggiungere anche policy RLS lato server.
 - **Migrazione Pro → Studio con dati già esistenti.** Se un'organizzazione
   che ha già clienti/fatture viene promossa a `plan = 'studio'`, quei dati
   restano "intrappolati" nell'identità Studio (che l'app non carica più
