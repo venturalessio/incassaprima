@@ -51,8 +51,8 @@ import { computeStudioBilling } from './lib/billing.js';
   // di Stripe: sicuro da esporre, autorizza solo l'apertura del checkout
   // overlay, non movimenti di denaro). 'sandbox' finché non passiamo a un
   // account Paddle live — vedi supabase/README.md per la configurazione.
-  const PADDLE_CLIENT_TOKEN = 'test_6325951520f5b407ea108981bc5';
-  const PADDLE_ENVIRONMENT = 'sandbox';
+  const PADDLE_CLIENT_TOKEN = 'live_50bdbbafbd0f3cdd3e6cdbaf917';
+  const PADDLE_ENVIRONMENT = 'production';
 
   const $ = (id) => document.getElementById(id);
   const state = {
