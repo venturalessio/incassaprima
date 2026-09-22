@@ -308,3 +308,22 @@ sempre a carico dell'utente.
   `index.html`. Mancavano del tutto prima; meta description/OG/Twitter
   card c'erano già. Nessun contenuto nuovo, solo infrastruttura che
   aiuta i motori di ricerca a indicizzare correttamente il sito.
+- ~~**Dominio personalizzato `incassaprima.it`**~~ Fatto il 22/09/2026:
+  registrato su register.it, DNS propagati (4 record A verso GitHub
+  Pages), file `CNAME` aggiunto al repository, certificato HTTPS
+  generato automaticamente da GitHub Pages — verificato dal vivo
+  (`https://incassaprima.it/` risponde 200). Aggiornati
+  canonical/OG/Twitter/JSON-LD in `index.html`, `sitemap.xml` e
+  `robots.txt` dal vecchio `venturalessio.github.io/incassaprima` al
+  nuovo dominio. **Resta da fare** (in ordine): (1) autorizzare
+  `https://incassaprima.it/app/` come redirect URL nelle impostazioni
+  Supabase Auth (Authentication → URL Configuration), altrimenti
+  aggiornare `emailRedirectTo` in `app/app.js` (riga ~1460, ancora
+  puntato al vecchio dominio) romperebbe la conferma email delle nuove
+  registrazioni; (2) una volta autorizzato, aggiornare quel redirect
+  nel codice; (3) approvare il nuovo dominio su Paddle (checkout live,
+  stesso passaggio già fatto per `venturalessio.github.io`) prima di
+  usarlo nei materiali di marketing/outreach già preparati. Incluse nel
+  pacchetto dominio anche 2 caselle email (`info@`, `alessio@`
+  `@incassaprima.it`, con DKIM e DMARC attivati) e una PEC gratuita per
+  il primo anno (non ancora configurata).

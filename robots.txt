@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://venturalessio.github.io/incassaprima/sitemap.xml
+Sitemap: https://incassaprima.it/sitemap.xml
