@@ -289,3 +289,22 @@ sessioni di sviluppo.
   funzionalità self-service (pulsante "Elimina account"/"Esporta i miei
   dati" nell'app, con relative funzioni server-side) quando il numero di
   utenti reali renderà insostenibile il processo manuale.
+
+## Marketing e crescita
+
+Con Pro e Studio ora self-service e funzionanti, il 22/09/2026 si è
+iniziato a lavorare sulla visibilità: SEO tecnica sul sito, contenuti
+per outreach diretto ai commercialisti (target naturale di Studio),
+copy per eventuali annunci a pagamento, materiali di lancio su
+directory/community. Sessione senza accesso diretto a piattaforme
+pubblicitarie o social: il lavoro fatto qui è copy/contenuti/codice,
+la pubblicazione effettiva (annunci, post, form di lancio) resta
+sempre a carico dell'utente.
+
+- ~~**SEO tecnica base**~~ Fatto il 22/09/2026: aggiunti `robots.txt`
+  e `sitemap.xml` alla radice del sito (referenziati a vicenda),
+  `<link rel="canonical">` e dati strutturati JSON-LD
+  (`SoftwareApplication` con le tre offerte Free/Pro/Studio) su
+  `index.html`. Mancavano del tutto prima; meta description/OG/Twitter
+  card c'erano già. Nessun contenuto nuovo, solo infrastruttura che
+  aiuta i motori di ricerca a indicizzare correttamente il sito.
