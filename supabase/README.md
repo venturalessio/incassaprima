@@ -146,11 +146,11 @@ diretta senza P.IVA — la gestione fiscale sugli incassi ricevuti resta
 comunque da concordare con un commercialista, Paddle non elimina quella
 parte.
 
-Tre funzioni Edge, **verificate end-to-end il 21/09/2026** con un
-account Paddle sandbox reale: guardia di autenticazione, fail-closed
-senza chiavi configurate, algoritmo di verifica firma webhook
-incrociato con un riferimento HMAC-SHA256 indipendente, creazione
-transazione via API REST, webhook `subscription.created`/
+Tre funzioni Edge, **verificate end-to-end il 21/09/2026** (piano Pro)
+con un account Paddle sandbox reale: guardia di autenticazione,
+fail-closed senza chiavi configurate, algoritmo di verifica firma
+webhook incrociato con un riferimento HMAC-SHA256 indipendente,
+creazione transazione via API REST, webhook `subscription.created`/
 `subscription.canceled` che aggiorna `organizations` — e infine un
 acquisto vero in sandbox dall'app (carta di test, overlay Paddle.js)
 che ha attivato correttamente il piano Pro. Niente SDK: le funzioni
@@ -158,6 +158,23 @@ chiamano l'API REST di Paddle con `fetch()` diretto (niente dipendenza
 da `npm:@paddle/paddle-node-sdk`, la cui compatibilità con Deno non era
 verificabile da questa sessione), e la firma dei webhook è verificata a
 mano con `crypto.subtle` (Web Crypto, nativo in Deno).
+
+**Checkout self-service Studio aggiunto il 22/09/2026**: stessa
+`create-paddle-transaction`/`paddle-webhook`, estese per accettare
+anche `target_plan === 'studio'` (vedi sopra). La logica nuova — la
+chiamata a `upgrade_to_studio` seguita dall'aggiornamento dei campi
+`paddle_*` sulla organizzazione identità restituita — è stata
+verificata **a livello di database** con un'organizzazione e un utente
+di test usa e getta (creati, verificati, poi eliminati): risultato
+esattamente quello atteso (organizzazione di partenza →
+`managed_by`/`plan='free'`, nuova organizzazione identità →
+`plan='studio'` con i campi `paddle_*` impostati). Non è stato invece
+ripetuto il test end-to-end via HTTP con firma webhook reale (serve il
+`PADDLE_WEBHOOK_SECRET` in chiaro, non disponibile in questa sessione
+dopo un compattamento della conversazione): **prima di considerare
+Studio pronto per clienti reali, va fatto un acquisto vero in sandbox
+dall'app** (stesso collaudo già fatto per Pro), impostando prima
+`PADDLE_PRICE_ID_STUDIO` come secret.
 
 **Nota per il passaggio a "live"**: l'account Paddle richiede anche un
 **"Default payment link"** impostato (Checkout → Checkout Settings →
@@ -168,17 +185,22 @@ test: va rifatto anche sull'account live (i domini vanno approvati
 separatamente per sandbox e live).
 
 - **`create-paddle-transaction`** (`verify_jwt=true`): chiamata da un
-  utente loggato per passare al piano Pro. Verifica lato server che il
-  chiamante sia proprietario dell'organizzazione indicata (stesso
-  controllo che aveva `create-checkout-session` con Stripe), poi crea
-  una Transazione Paddle con `custom_data: {organization_id,
-  target_plan}` **impostati server-side** (non manomettibili dal
-  browser) e restituisce l'id al client, che apre il checkout overlay
-  di Paddle.js passando quell'id (`Paddle.Checkout.open({transactionId
-  })` — niente redirect di pagina, l'utente resta nella SPA). **Solo il
-  piano Pro è offerto in self-service**: Studio richiede una
-  ristrutturazione dei dati (vedi `upgrade_to_studio` sopra) che per
-  ora resta ad attivazione manuale/semi-manuale.
+  utente loggato per passare al piano Pro **o Studio** (`plan: 'pro' |
+  'studio'` nel corpo della richiesta, default `'pro'`). Verifica lato
+  server che il chiamante sia proprietario dell'organizzazione indicata
+  (stesso controllo che aveva `create-checkout-session` con Stripe),
+  seleziona il prezzo giusto (`PADDLE_PRICE_ID_PRO` o
+  `PADDLE_PRICE_ID_STUDIO`), poi crea una Transazione Paddle con
+  `custom_data: {organization_id, target_plan, owner_user_id}`
+  **impostati server-side** (non manomettibili dal browser) e
+  restituisce l'id al client, che apre il checkout overlay di
+  Paddle.js passando quell'id (`Paddle.Checkout.open({transactionId})`
+  — niente redirect di pagina, l'utente resta nella SPA). Il checkout
+  Studio usa solo il prezzo base (quantity 1): `upgrade_to_studio`
+  parte sempre da 1 azienda gestita, quindi non serve calcolare
+  aziende extra in questa fase (il prezzo "extra azienda" del catalogo
+  entra in gioco solo quando lo Studio aggiunge aziende, non ancora
+  collegato al billing).
 - **`create-portal-session`** (`verify_jwt=true`): crea un link
   (monouso, breve durata) al Customer Portal di Paddle (gestione
   metodo di pagamento, fatture, annullamento self-service) per
@@ -186,13 +208,31 @@ separatamente per sandbox e live).
 - **`paddle-webhook`** (`verify_jwt=false`, autenticata verificando la
   firma della richiesta con `PADDLE_WEBHOOK_SECRET` — header
   `Paddle-Signature: ts=...;h1=...`, dove `h1` è l'HMAC-SHA256
-  esadecimale di `ts:rawBody`): riceve `subscription.created` (attiva
-  il piano Pro, legge `organization_id`/`target_plan` da
-  `custom_data`), `subscription.updated` (aggiorna lo stato; se lo
-  stato diventa `canceled`/`paused` torna al piano Free — `past_due`,
-  cioè un tentativo di addebito in corso di ripetizione via Paddle
-  Retain, **non** fa scattare il downgrade) e `subscription.canceled`
-  (torna al piano Free).
+  esadecimale di `ts:rawBody`): riceve `subscription.created`, che
+  legge `organization_id`/`target_plan`/`owner_user_id` da
+  `custom_data` e si comporta diversamente in base al piano:
+  - `target_plan === 'pro'`: aggiorna direttamente
+    l'organizzazione esistente (`plan='pro'` + campi `paddle_*`);
+  - `target_plan === 'studio'`: chiama la funzione DB
+    `upgrade_to_studio(organization_id, owner_user_id)`, che crea una
+    nuova organizzazione "identità" con `plan='studio'` e riassegna
+    l'organizzazione di partenza come azienda gestita (`managed_by`,
+    `plan='free'`) — i campi `paddle_*` dell'abbonamento vengono
+    salvati sulla **nuova** organizzazione identità restituita dalla
+    funzione, non su quella di partenza.
+
+  `subscription.updated` (aggiorna lo stato; se lo stato diventa
+  `canceled`/`paused` torna al piano Free — `past_due`, cioè un
+  tentativo di addebito in corso di ripetizione via Paddle Retain,
+  **non** fa scattare il downgrade) e `subscription.canceled` (torna
+  al piano Free) restano agnostiche rispetto al piano: funzionano
+  identiche per Pro e Studio, cercando l'organizzazione da
+  `paddle_subscription_id`. Per uno Studio cancellato questo riporta a
+  `plan='free'` **solo l'organizzazione identità**: le aziende gestite
+  restano nel database con `managed_by` invariato, quindi
+  inaccessibili finché l'abbonamento non viene riattivato o la
+  situazione risolta manualmente — comportamento scelto deliberatamente
+  invece di eliminare o "liberare" le aziende gestite.
 
 Le vecchie funzioni Stripe (`create-checkout-session`, `stripe-webhook`)
 non sono state eliminate — gli strumenti a disposizione di questa
@@ -223,6 +263,8 @@ sono condivisi a livello di progetto):
 
 - `PADDLE_API_KEY` — la chiave API Paddle (sandbox o live).
 - `PADDLE_PRICE_ID_PRO` — l'ID del prezzo Pro creato al punto 2.
+- `PADDLE_PRICE_ID_STUDIO` — l'ID del prezzo base Studio (catalogo già
+  pronto sia in sandbox sia in live, vedi ROADMAP.md).
 - `PADDLE_WEBHOOK_SECRET` — la notification secret key del webhook
   creato al punto 3.
 - `PADDLE_ENVIRONMENT` — `sandbox` (default se non impostata) o
@@ -231,7 +273,9 @@ sono condivisi a livello di progetto):
 Finché `PADDLE_API_KEY`/`PADDLE_PRICE_ID_PRO` non sono impostate,
 `create-paddle-transaction` risponde con un errore gestito (503,
 "pagamenti non ancora configurati") invece di fallire in modo oscuro:
-sicuro da aver distribuito le funzioni in anticipo. Stesso discorso per
+sicuro da aver distribuito le funzioni in anticipo. Stesso comportamento
+per una richiesta di checkout Studio con `PADDLE_PRICE_ID_STUDIO` non
+impostata (il checkout Pro resta disponibile). Stesso discorso per
 `paddle-webhook` senza `PADDLE_WEBHOOK_SECRET` — verificato dal vivo
 che risponde 503 invece di accettare richieste non firmate.
 

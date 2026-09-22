@@ -2913,8 +2913,9 @@ import { computeStudioBilling } from './lib/billing.js';
   // Mostra, nel modal Piani, l'azione utile in base a chi sta guardando:
   // niente se non è loggato o sta guardando un'azienda gestita (il piano
   // si gestisce sempre dalla propria organizzazione/identità, non da lì),
-  // altrimenti un pulsante per passare a Pro (checkout Paddle) o per
-  // gestire un abbonamento già attivo.
+  // altrimenti i pulsanti per passare a Pro/Studio (checkout Paddle) o per
+  // gestire un abbonamento già attivo. Il passaggio a Studio è offerto sia
+  // da Free sia da Pro (upgrade_to_studio ammette entrambi i casi).
   function renderPlansUpgradeArea() {
     const area = $('plansUpgradeArea');
     if (!area) return;
@@ -2933,17 +2934,30 @@ import { computeStudioBilling } from './lib/billing.js';
       return;
     }
 
+    const studioBtn = '<button type="button" id="upgradeToStudioBtn" class="small">Passa a Studio — €19/mese</button>';
+
     if (org.plan === 'free') {
       area.innerHTML = `
         <div class="recommendation" style="margin:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <span>Sei sul piano Free su <strong>${escapeHtml(org.name)}</strong>.</span>
-          <button type="button" id="upgradeToProBtn" class="small">Passa a Pro — €9/mese</button>
-        </div>
-        <p class="smallhint">Per il piano Studio, contattaci: <a href="mailto:ventura.alessio@gmail.com">ventura.alessio@gmail.com</a>.</p>`;
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" id="upgradeToProBtn" class="small">Passa a Pro — €9/mese</button>
+            ${studioBtn}
+          </div>
+        </div>`;
+    } else if (org.plan === 'pro') {
+      area.innerHTML = `
+        <div class="recommendation" style="margin:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>Sei sul piano <strong>Pro</strong> su <strong>${escapeHtml(org.name)}</strong>.</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${studioBtn}
+            <button type="button" id="manageBillingBtn" class="small secondary">Gestisci abbonamento</button>
+          </div>
+        </div>`;
     } else {
       area.innerHTML = `
         <div class="recommendation" style="margin:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <span>Sei sul piano <strong>${org.plan === 'studio' ? 'Studio' : 'Pro'}</strong> su <strong>${escapeHtml(org.name)}</strong>.</span>
+          <span>Sei sul piano <strong>Studio</strong> su <strong>${escapeHtml(org.name)}</strong>.</span>
           <button type="button" id="manageBillingBtn" class="small secondary">Gestisci abbonamento</button>
         </div>`;
     }
@@ -2965,7 +2979,7 @@ import { computeStudioBilling } from './lib/billing.js';
     return error?.message || 'Errore sconosciuto.';
   }
 
-  async function upgradeToProCheckout() {
+  async function startPlanCheckout(plan) {
     if (!state.session || !state.organization) return;
 
     if (!window.Paddle) {
@@ -2974,7 +2988,7 @@ import { computeStudioBilling } from './lib/billing.js';
     }
 
     const { data, error } = await state.supabase.functions.invoke('create-paddle-transaction', {
-      body: { organization_id: state.organization.id }
+      body: { organization_id: state.organization.id, plan }
     });
 
     if (error) {
@@ -2991,6 +3005,14 @@ import { computeStudioBilling } from './lib/billing.js';
       transactionId: data.transaction_id,
       customer: state.session.user.email ? { email: state.session.user.email } : undefined
     });
+  }
+
+  function upgradeToProCheckout() {
+    return startPlanCheckout('pro');
+  }
+
+  function upgradeToStudioCheckout() {
+    return startPlanCheckout('studio');
   }
 
   async function openBillingPortal() {
@@ -3891,6 +3913,8 @@ import { computeStudioBilling } from './lib/billing.js';
     $('plansUpgradeArea').addEventListener('click', (event) => {
       if (event.target.closest('#upgradeToProBtn')) {
         upgradeToProCheckout();
+      } else if (event.target.closest('#upgradeToStudioBtn')) {
+        upgradeToStudioCheckout();
       } else if (event.target.closest('#manageBillingBtn')) {
         openBillingPortal();
       }
