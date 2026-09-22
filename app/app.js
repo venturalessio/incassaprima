@@ -1457,7 +1457,7 @@ import { computeStudioBilling } from './lib/billing.js';
       return;
     }
 
-    const redirectUrl = new URL('https://venturalessio.github.io/incassaprima/app/');
+    const redirectUrl = new URL('https://incassaprima.it/app/');
     if (inviteToken) redirectUrl.searchParams.set('invite', inviteToken);
 
     const { data, error } = await state.supabase.auth.signUp({
