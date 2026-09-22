@@ -64,36 +64,54 @@ sessioni di sviluppo.
     partita IVA aperta. **Attenzione**: un MoR non elimina l'obbligo
     fiscale sul reddito percepito dai payout — da concordare comunque
     con un commercialista, vedi punto "Partita IVA" sotto.
-  - **Solo Pro è self-service.** Studio richiede la ristrutturazione dei
-    dati (nuova identità + organizzazione esistente riassegnata come
-    azienda gestita, la stessa cosa fatta a mano in passato — vedi voce
-    sopra sulla migrazione Pro → Studio): troppo rischioso automatizzarlo
-    in un webhook non ancora provato su clienti reali. Per ora Studio
-    resta ad attivazione semi-manuale: contatto diretto + link di
-    pagamento Paddle creato a mano, poi la stessa conversione manuale di
-    sempre (ora disponibile anche come funzione `upgrade_to_studio`,
-    richiamabile via SQL invece di operazioni ad hoc). Prossimo passo
-    naturale quando Pro self-service sarà provato: automatizzare anche
-    Studio nel webhook, e ricollegare la quantity extra-aziende
-    (vedi `app/lib/billing.js`) a una quantity reale sulla transazione
-    Paddle (supporto nativo multi-seat/quantity).
-    **Catalogo già pronto** (22/09/2026, sandbox e live): prodotto
-    "IncassaPrima Studio" con due prezzi separati, combinati sulla
-    stessa transazione — Paddle non supporta prezzi a scaglioni in un
-    unico oggetto. Prezzo base (`€19,00/mese`, quantità fissa 1) +
-    prezzo azienda extra (`€5,00/mese`, quantità = aziende oltre le 3
-    incluse, omesso dalla transazione se 0). Verificato dal vivo in
-    sandbox: transazione con base + 2 extra → totale `€29,00`, corretto.
-    ID prezzi:
+  - ~~**Studio self-service**~~ Fatto il 22/09/2026 (codice e test DB;
+    **ancora da attivare in produzione**, vedi sotto). Checkout iniziale
+    Studio con lo stesso circuito di Pro: `create-paddle-transaction`
+    accetta `plan: 'studio'` e crea la transazione con il solo prezzo
+    base (quantity 1) — `upgrade_to_studio` parte sempre da 1 azienda
+    gestita, quindi non serve calcolare aziende extra in fase di primo
+    checkout. Il webhook (`subscription.created`), per
+    `target_plan === 'studio'`, chiama `upgrade_to_studio(organization_id,
+    owner_user_id)` (letto da `custom_data`, impostato server-side) e
+    salva i campi `paddle_*` sulla **nuova organizzazione identità**
+    restituita, non su quella di partenza (che diventa `managed_by`,
+    `plan='free'`). Offerto anche da Pro (non solo da Free), come
+    permesso da `upgrade_to_studio` stesso. **Cancellazione**: decisione
+    presa esplicitamente con l'utente — l'organizzazione identità torna
+    a `plan='free'`, le aziende gestite restano nel database intatte ma
+    inaccessibili (`managed_by` invariato) finché non si riattiva
+    l'abbonamento o si risolve manualmente; nessuna eliminazione
+    automatica di dati. In-app: modal Piani offre "Passa a Studio —
+    €19/mese" accanto a "Passa a Pro"/"Gestisci abbonamento", a seconda
+    del piano corrente.
+    - **Testato solo a livello di database** (organizzazione e utente
+      usa e getta, creati e poi eliminati): `upgrade_to_studio` +
+      aggiornamento `paddle_*` sulla nuova identità producono esattamente
+      il risultato atteso. **Non ancora ripetuto il test end-to-end via
+      HTTP** con firma webhook reale (serve `PADDLE_WEBHOOK_SECRET` in
+      chiaro, non disponibile in sessione dopo un compattamento) né un
+      acquisto vero in sandbox dall'app. **Prima di annunciare Studio
+      come acquistabile**, va impostato il secret
+      `PADDLE_PRICE_ID_STUDIO` (mancante finché non impostato a mano —
+      finché manca, `create-paddle-transaction` risponde 503 per
+      `plan: 'studio'` mentre Pro continua a funzionare) e ripetuto lo
+      stesso collaudo con acquisto reale in sandbox già fatto per Pro.
+    **Catalogo** (22/09/2026, sandbox e live): prodotto "IncassaPrima
+    Studio" con due prezzi separati, combinati sulla stessa
+    transazione — Paddle non supporta prezzi a scaglioni in un unico
+    oggetto. Prezzo base (`€19,00/mese`, quantità fissa 1) + prezzo
+    azienda extra (`€5,00/mese`, quantità = aziende oltre le 3 incluse,
+    omesso dalla transazione se 0). Verificato dal vivo in sandbox:
+    transazione con base + 2 extra → totale `€29,00`, corretto. ID
+    prezzi:
     - Sandbox: base `pri_01m34bmjf5awf0tg5y5715g6d1`, extra
       `pri_01m34bpg67ma4xsecqggd5xhpe`.
     - Live: base `pri_01m34btwe2mje622eg51y79yge`, extra
       `pri_01m34bvvdd3nds12psqnfv1kj5`.
-    Manca ancora tutta la parte applicativa: funzione Edge che calcola
-    gli item dinamicamente da `computeStudioBilling`, gestione
-    `subscription.created`/`updated` per Studio nel webhook (che deve
-    chiamare `upgrade_to_studio` invece di un semplice update), e la UI
-    nel modal Studio per avviare il checkout.
+    Resta da collegare la quantity extra-aziende (`app/lib/billing.js`,
+    `computeStudioBilling`) a una quantity reale sulla transazione
+    quando lo Studio aggiunge/rimuove aziende dopo il primo checkout
+    (oggi non tocca affatto il billing Paddle).
   - ~~**Configurazione e test sandbox**~~ Fatto il 21/09/2026: account
     Paddle sandbox creato, prodotto/prezzo Pro configurato, webhook
     collegato, i 4 secret impostati (`PADDLE_API_KEY`,

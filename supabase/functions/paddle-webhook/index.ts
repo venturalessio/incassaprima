@@ -9,10 +9,13 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // l'HMAC-SHA256 esadecimale di "ts:rawBody" — vedi
 // developer.paddle.com/webhooks/about/signature-verification).
 //
-// Per ora gestisce solo il piano Pro (unico offerto in self-service).
-// Se in futuro il checkout Studio arriverà qui con
-// custom_data.target_plan === 'studio', andrà chiamata upgrade_to_studio
-// con l'utente proprietario corretto invece di limitarsi a un update.
+// subscription.created gestisce sia il piano Pro (semplice update
+// dell'organizzazione esistente) sia il piano Studio: in quel caso va
+// chiamata la funzione upgrade_to_studio, che crea una nuova
+// organizzazione "identità" con plan='studio' e riassegna l'organizzazione
+// di partenza come azienda gestita (managed_by, plan='free'). I campi
+// paddle_* dell'abbonamento vanno quindi salvati sulla nuova organizzazione
+// identità restituita da upgrade_to_studio, non su quella originale.
 
 const PADDLE_WEBHOOK_SECRET = Deno.env.get("PADDLE_WEBHOOK_SECRET");
 
@@ -101,18 +104,40 @@ Deno.serve(async (req) => {
       const subscription = event.data;
       const organizationId = subscription?.custom_data?.organization_id;
       const targetPlan = subscription?.custom_data?.target_plan;
+      const ownerUserId = subscription?.custom_data?.owner_user_id;
 
-      if (!organizationId || targetPlan !== "pro") break;
+      if (!organizationId) break;
 
-      await supabase
-        .from("organizations")
-        .update({
-          plan: "pro",
-          paddle_customer_id: subscription.customer_id,
-          paddle_subscription_id: subscription.id,
-          paddle_subscription_status: subscription.status
-        })
-        .eq("id", organizationId);
+      if (targetPlan === "pro") {
+        await supabase
+          .from("organizations")
+          .update({
+            plan: "pro",
+            paddle_customer_id: subscription.customer_id,
+            paddle_subscription_id: subscription.id,
+            paddle_subscription_status: subscription.status
+          })
+          .eq("id", organizationId);
+      } else if (targetPlan === "studio" && ownerUserId) {
+        const { data: newIdentityOrgId, error: upgradeError } = await supabase.rpc("upgrade_to_studio", {
+          target_organization_id: organizationId,
+          acting_user_id: ownerUserId
+        });
+
+        if (upgradeError) {
+          console.error("Errore upgrade_to_studio dal webhook Paddle:", upgradeError);
+          break;
+        }
+
+        await supabase
+          .from("organizations")
+          .update({
+            paddle_customer_id: subscription.customer_id,
+            paddle_subscription_id: subscription.id,
+            paddle_subscription_status: subscription.status
+          })
+          .eq("id", newIdentityOrgId);
+      }
 
       break;
     }

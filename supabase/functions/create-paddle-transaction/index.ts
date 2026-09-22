@@ -2,15 +2,20 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // Crea una transazione Paddle (l'equivalente di una Stripe Checkout
-// Session) per passare al piano Pro. Il client apre poi il checkout
-// overlay di Paddle.js passando l'id restituito qui: organization_id e
-// target_plan finiscono in custom_data lato server (quindi fidati), non
-// possono essere manomessi dal browser come accadrebbe passandoli
-// direttamente al checkout lato client. Chiamata da un utente
-// autenticato (verify_jwt=true).
+// Session) per passare al piano Pro o Studio. Il client apre poi il
+// checkout overlay di Paddle.js passando l'id restituito qui:
+// organization_id, target_plan e owner_user_id finiscono in custom_data
+// lato server (quindi fidati), non possono essere manomessi dal browser
+// come accadrebbe passandoli direttamente al checkout lato client.
+// Chiamata da un utente autenticato (verify_jwt=true).
+//
+// Per Studio il checkout iniziale usa solo il prezzo base (quantity 1):
+// upgrade_to_studio parte sempre da 1 azienda gestita, quindi non serve
+// calcolare extra aziende in questa fase.
 
 const PADDLE_API_KEY = Deno.env.get("PADDLE_API_KEY");
 const PADDLE_PRICE_ID_PRO = Deno.env.get("PADDLE_PRICE_ID_PRO");
+const PADDLE_PRICE_ID_STUDIO = Deno.env.get("PADDLE_PRICE_ID_STUDIO");
 const PADDLE_ENVIRONMENT = Deno.env.get("PADDLE_ENVIRONMENT") || "sandbox";
 const PADDLE_API_BASE =
   PADDLE_ENVIRONMENT === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
@@ -45,7 +50,7 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabaseAsUser.auth.getUser();
   if (userError || !userData?.user) return jsonResponse({ error: "Sessione non valida." }, 401);
 
-  let body: { organization_id?: string };
+  let body: { organization_id?: string; plan?: string };
   try {
     body = await req.json();
   } catch {
@@ -54,7 +59,10 @@ Deno.serve(async (req) => {
 
   if (!body.organization_id) return jsonResponse({ error: "Organizzazione mancante." }, 400);
 
-  if (!PADDLE_API_KEY || !PADDLE_PRICE_ID_PRO) {
+  const targetPlan = body.plan === "studio" ? "studio" : "pro";
+  const priceId = targetPlan === "studio" ? PADDLE_PRICE_ID_STUDIO : PADDLE_PRICE_ID_PRO;
+
+  if (!PADDLE_API_KEY || !priceId) {
     return jsonResponse(
       { error: "I pagamenti non sono ancora configurati. Riprova più tardi o contattaci." },
       503
@@ -77,12 +85,16 @@ Deno.serve(async (req) => {
 
   const organization = membership.organizations as any;
   if (organization.managed_by !== null || organization.plan === "studio") {
-    return jsonResponse({ error: "Questa organizzazione non può passare al piano Pro." }, 400);
+    return jsonResponse({ error: "Questa organizzazione non può passare a questo piano." }, 400);
   }
 
   const transactionBody: Record<string, unknown> = {
-    items: [{ price_id: PADDLE_PRICE_ID_PRO, quantity: 1 }],
-    custom_data: { organization_id: organization.id, target_plan: "pro" }
+    items: [{ price_id: priceId, quantity: 1 }],
+    custom_data: {
+      organization_id: organization.id,
+      target_plan: targetPlan,
+      owner_user_id: userData.user.id
+    }
   };
   if (organization.paddle_customer_id) {
     transactionBody.customer_id = organization.paddle_customer_id;
