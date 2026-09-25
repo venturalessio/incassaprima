@@ -80,8 +80,11 @@ a {
   place-items: center;
   border-radius: 9px;
   background: var(--blue);
-  color: white;
-  font-size: 19px;
+}
+
+.logo-mark svg {
+  width: 18px;
+  height: 18px;
 }
 
 .nav-links {

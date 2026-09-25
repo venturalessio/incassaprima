@@ -301,6 +301,22 @@ pubblicitarie o social: il lavoro fatto qui è copy/contenuti/codice,
 la pubblicazione effettiva (annunci, post, form di lancio) resta
 sempre a carico dell'utente.
 
+- ~~**Identità visiva: nuovo simbolo del brand**~~ Fatto il 25/09/2026.
+  Il vecchio logo-mark era un semplice "€" — scontato per un prodotto
+  che non è un gestionale di fatturazione, e uguale a mille altri
+  loghi fintech. Definita una brand foundation (personalità,
+  positioning, direzione creativa) esplorata in un mockup su Artifact,
+  poi applicata al prodotto: nuovo simbolo con tre barre orizzontali
+  decrescenti (l'idea di "priorità ordinate", coerente con la vista
+  "chi contattare oggi" dell'app) più un punto ambra sulla barra più
+  urgente. Sostituiti `icons/icon-192.png` e `icons/icon-512.png`
+  (usati da manifest PWA, apple-touch-icon, OG/Twitter image) generati
+  via rendering SVG→PNG con Playwright, e il logo-mark testuale "€" in
+  `index.html` (header e footer) con l'SVG inline. Palette e
+  tipografia della landing (blu `#2563eb`, DM Sans/Manrope) **non
+  toccate**: già coerenti con la nuova direzione, non serviva un
+  redesign più ampio.
+
 - ~~**SEO tecnica base**~~ Fatto il 22/09/2026: aggiunti `robots.txt`
   e `sitemap.xml` alla radice del sito (referenziati a vicenda),
   `<link rel="canonical">` e dati strutturati JSON-LD
