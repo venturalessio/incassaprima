@@ -299,7 +299,7 @@ a {
 }
 
 .critical-kpi strong {
-  color: var(--red);
+  color: #b42318;
 }
 
 .dashboard-label {
