@@ -9,6 +9,8 @@
   <link rel="canonical" href="https://incassaprima.it/">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="styles.css">
 
   <meta property="og:type" content="website">
@@ -124,7 +126,7 @@
         </p>
       </div>
 
-      <div class="hero-visual" aria-label="Esempio dello scadenzario IncassaPrima">
+      <div class="hero-visual" role="img" aria-label="Esempio dello scadenzario IncassaPrima: le fatture da sollecitare oggi e un sollecito già pronto">
         <div class="browser">
           <div class="browser-top">
             <span class="dot red-dot"></span>
@@ -283,7 +285,7 @@
         <a class="button" href="app/">Prova con una scadenza fittizia</a>
       </div>
 
-      <div class="email-card">
+      <div class="email-card" role="img" aria-label="Esempio di email di sollecito compilata con cliente, numero fattura, importo e scadenza">
         <div class="email-top">
           <span class="email-label">EMAIL PRONTA</span>
           <span class="ready-status">● Pronta da inviare</span>
@@ -422,7 +424,7 @@
 
         <button type="submit" class="button">Invia richiesta</button>
 
-        <p style="font-size:12px;color:var(--muted);margin-top:10px">
+        <p class="form-note">
           Il modulo è gestito tramite Formspree e i dati inseriti sono trattati solo per risponderti — leggi l'<a href="privacy.html">informativa privacy</a>.
         </p>
       </form>
@@ -440,15 +442,15 @@
 
       <div class="trust-grid">
         <article>
-          <div class="icon-box">🔒</div>
+          <div class="icon-box" aria-hidden="true">🔒</div>
           <p>I tuoi dati restano tuoi: cancellabili in ogni momento, nessuna rivendita a terzi.</p>
         </article>
         <article>
-          <div class="icon-box">💳</div>
+          <div class="icon-box" aria-hidden="true">💳</div>
           <p>Nessuna carta di credito richiesta per iniziare.</p>
         </article>
         <article>
-          <div class="icon-box">🛠️</div>
+          <div class="icon-box" aria-hidden="true">🛠️</div>
           <p>Un progetto indipendente, nato per aiutare artigiani e micro-imprese a incassare le fatture.</p>
         </article>
       </div>
@@ -503,7 +505,7 @@
 
   <footer class="site-footer">
     <div>
-      <a class="logo" href="./">
+      <a class="logo" href="./" aria-label="IncassaPrima home">
         <span class="logo-mark" aria-hidden="true">
           <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
             <rect x="40" y="52" width="80" height="14" rx="7" fill="#fff"></rect>

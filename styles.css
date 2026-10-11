@@ -2,7 +2,7 @@
 
 :root {
   --ink: #172033;
-  --muted: #667085;
+  --muted: #596377;
   --line: #e5eaf2;
   --blue: #155eef;
   --blue-dark: #0f3d87;
@@ -26,6 +26,22 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+::selection {
+  background: #d1e0ff;
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.final-cta :focus-visible,
+.pro-plan :focus-visible {
+  outline-color: #ffffff;
 }
 
 body {
@@ -98,6 +114,9 @@ a {
 
 .button {
   display: inline-block;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
   padding: 14px 19px;
   border-radius: 9px;
   background: var(--blue);
@@ -149,9 +168,10 @@ a {
   gap: 70px;
   padding-top: 78px;
   padding-bottom: 92px;
-  background:
-    radial-gradient(circle at 80% 30%, rgba(219, 234, 254, 0.65), transparent 30%),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  border-image:
+    radial-gradient(circle at 70% 30%, rgba(219, 234, 254, 0.65), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)
+    fill 0 / 0 / 0 100vmax;
 }
 
 .hero h1,
@@ -305,7 +325,7 @@ a {
 .dashboard-label {
   margin: 13px 0 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -338,7 +358,7 @@ a {
   display: block;
   margin-top: 4px;
   color: var(--blue);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -449,8 +469,7 @@ a {
 }
 
 .how-section {
-  border-top: 1px solid #eff2f6;
-  background: #fbfcfe;
+  border-image: linear-gradient(180deg, #eff2f6 0 1px, #fbfcfe 1px) fill 0 / 0 / 0 100vmax;
 }
 
 .steps article {
@@ -556,7 +575,7 @@ a {
 .plans-section {
   padding-top: 95px;
   padding-bottom: 95px;
-  background: #fbfcfe;
+  border-image: linear-gradient(#fbfcfe, #fbfcfe) fill 0 / 0 / 0 100vmax;
 }
 
 .plans-grid {
@@ -639,7 +658,7 @@ a {
 .pro-plan .price span,
 .pro-plan .plan-description,
 .pro-plan li {
-  color: #d0d5dd;
+  color: #dbe6ff;
 }
 
 .pro-plan li::before {
@@ -668,6 +687,8 @@ a {
 }
 
 .faq-list summary {
+  padding: 10px 0;
+  margin: -10px 0;
   cursor: pointer;
   font-size: 16px;
   font-weight: 700;
@@ -810,7 +831,7 @@ a {
 }
 
 .final-cta .eyebrow {
-  color: #bfdbfe;
+  color: #eef4ff;
 }
 
 .final-cta h2 {
@@ -821,7 +842,7 @@ a {
 
 .final-cta > p:not(.eyebrow) {
   margin: 16px 0 27px;
-  color: #dbeafe;
+  color: #eef4ff;
   font-size: 18px;
 }
 
@@ -834,6 +855,23 @@ a {
   padding-bottom: 34px;
 }
 
+.footer-links a {
+  display: inline-block;
+  padding: 11px 0;
+}
+
+.form-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.form-note a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .site-footer p {
   margin: 10px 0 0;
   color: var(--muted);
@@ -843,7 +881,7 @@ a {
 .footer-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 4px 18px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 600;
@@ -932,5 +970,19 @@ a {
 
   .dashboard {
     padding: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .button {
+    transition: background 0.15s ease;
+  }
+
+  .button:hover {
+    transform: none;
   }
 }
