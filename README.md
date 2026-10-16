@@ -1,34 +1,31 @@
-# IncassaPrima — PWA pronta per GitHub Pages
+# IncassaPrima
+
+Scadenzario fatture e solleciti per artigiani e micro-imprese.
+
+- Sito: https://incassaprima.it
+- App: https://incassaprima.it/app/
+- Contatti: info@incassaprima.it
 
 ## Contenuto
-- `index.html`: landing page pubblica
-- `app/index.html`: MVP scadenzario
-- `app/app.js`: logica applicativa
-- `styles.css`: stile della landing
-- `manifest.webmanifest`, `service-worker.js`, `icons/`: asset PWA
-- `privacy.html`: informativa iniziale per versione locale
+- `index.html`, `styles.css`: landing page pubblica (i font sono caricati nei `<link>` di ogni pagina, non dal CSS)
+- `privacy.html`, `termini.html`, `404.html`: pagine legali e pagina di errore
+- `app/index.html`, `app/app.js`, `app/lib/`: l'app (scadenzario, solleciti, analisi incassi)
+- `manifest.webmanifest`, `service-worker.js`, `icons/`: file della PWA
+- `supabase/`: migrazioni SQL e funzioni del progetto Supabase (vedi `supabase/README.md`)
+- `tests/`: test automatici della logica in `app/lib/`
+- `ROADMAP.md`: lavoro aperto e decisioni prese
 
-## Pubblicazione gratis con GitHub Pages
-1. Crea un account su https://github.com.
-2. Crea un repository pubblico chiamato `incassaprima`.
-3. Carica **tutto il contenuto di questa cartella**, mantenendo invariati cartelle e nomi.
-4. Nel repository: `Settings` → `Pages`.
-5. In “Build and deployment”: Source `Deploy from a branch`; Branch `main`; Folder `/(root)`; poi `Save`.
-6. Dopo 1–3 minuti apri `https://venturalessio.github.io/incassaprima/`.
-7. L'app è a `https://venturalessio.github.io/incassaprima/app/`.
+## Pubblicazione
+Il sito è pubblicato con GitHub Pages dal ramo `main` (cartella principale) sul dominio indicato in `CNAME`.
+Ogni push su `main` va online in pochi minuti.
 
-## Test prima del lancio
-- Inserisci `2.500`, `2.500,00`, `1.250,50`; devono diventare rispettivamente €2.500,00 e €1.250,50.
-- Prova i tre modelli di sollecito.
-- Prova CSV export/import.
-- Apri landing, privacy e app da smartphone.
-- In iPhone: Safari → Condividi → Aggiungi a Home.
-- In Android: Chrome → menu → Installa app/Aggiungi a schermata Home.
+Quando cambi `styles.css`, `index.html` o i file dell'app, aumenta il numero di `CACHE` in `service-worker.js`: altrimenti chi ha già aperto il sito continua a vedere la versione salvata.
 
-## Da modificare prima di condividere
-1. Sostituisci ogni `ciao@incassaprima.example` in `index.html` e `privacy.html` con una email reale.
-2. Se desideri, cambia il nome del prodotto e i testi della landing.
-3. Le icone sono provvisorie: sostituiscile quando avrai un logo.
+## Test
+```
+npm test
+```
+Gli stessi test girano su GitHub Actions a ogni pull request.
 
-## Nota tecnica
-I dati delle fatture vengono salvati solo nel browser (`localStorage`). Non sono sincronizzati fra PC e telefono e non costituiscono una soluzione fiscale o contabile. Per una versione Pro: backend, account, database, consenso/privacy aggiornati, cancellazione account e log di invio.
+## Dati
+Chi accede con un account salva fatture e clienti nel cloud su Supabase. Senza account l'app funziona in modalità locale: i dati restano solo nel browser (`localStorage`) e non sono sincronizzati fra dispositivi.
