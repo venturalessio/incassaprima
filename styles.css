@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
-
 :root {
   --ink: #172033;
   --muted: #596377;
@@ -16,6 +14,32 @@
   --white: #ffffff;
   --background: #f8faff;
   --dark: #101828;
+  --ink-soft: #475467;
+  --muted-soft: #667085;
+  --surface: #fbfcfe;
+  --surface-blue: #f8fbff;
+  --surface-gray: #f8fafc;
+  --surface-hover: #f9fafb;
+  --section-line: #eff2f6;
+  --border-strong: #d7dfec;
+  --border-input: #ccd5e1;
+  --border-neutral: #98a2b3;
+  --blue-hover: #004eea;
+  --blue-line: #b2ccff;
+  --blue-line-soft: #c7d7fe;
+  --blue-selection: #d1e0ff;
+  --blue-tint: #eff6ff;
+  --on-blue: #eef4ff;
+  --on-blue-muted: #dbe6ff;
+  --on-blue-accent: #84adff;
+  --red-line: #fecdca;
+  --red-strong: #b42318;
+  --dot-red: #f97066;
+  --dot-yellow: #fdb022;
+  --dot-green: #32d583;
+  --hero-glow: rgba(219, 234, 254, 0.65);
+  --shadow-button: 0 7px 15px rgba(21, 94, 239, 0.20);
+  --shadow-float: 0 14px 35px rgba(16, 24, 40, 0.13);
   --radius: 16px;
   --shadow: 0 18px 50px rgba(16, 24, 40, 0.10);
 }
@@ -29,7 +53,7 @@ html {
 }
 
 ::selection {
-  background: #d1e0ff;
+  background: var(--blue-selection);
   color: var(--ink);
 }
 
@@ -41,7 +65,7 @@ html {
 
 .final-cta :focus-visible,
 .pro-plan :focus-visible {
-  outline-color: #ffffff;
+  outline-color: var(--white);
 }
 
 body {
@@ -107,7 +131,7 @@ a {
   display: flex;
   align-items: center;
   gap: 24px;
-  color: #475467;
+  color: var(--ink-soft);
   font-size: 14px;
   font-weight: 600;
 }
@@ -120,16 +144,16 @@ a {
   padding: 14px 19px;
   border-radius: 9px;
   background: var(--blue);
-  color: white;
+  color: var(--white);
   font-size: 15px;
   font-weight: 700;
-  box-shadow: 0 7px 15px rgba(21, 94, 239, 0.20);
+  box-shadow: var(--shadow-button);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .button:hover {
   transform: translateY(-1px);
-  background: #004eea;
+  background: var(--blue-hover);
 }
 
 .button-small {
@@ -139,8 +163,8 @@ a {
 }
 
 .button-outline {
-  background: white;
-  border: 1px solid #b2ccff;
+  background: var(--white);
+  border: 1px solid var(--blue-line);
   color: var(--blue);
 }
 
@@ -169,8 +193,8 @@ a {
   padding-top: 78px;
   padding-bottom: 92px;
   border-image:
-    radial-gradient(circle at 70% 30%, rgba(219, 234, 254, 0.65), transparent 30%),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)
+    radial-gradient(circle at 70% 30%, var(--hero-glow), transparent 30%),
+    linear-gradient(180deg, var(--surface-blue) 0%, var(--white) 100%)
     fill 0 / 0 / 0 100vmax;
 }
 
@@ -217,9 +241,9 @@ a {
 
 .browser {
   overflow: hidden;
-  border: 1px solid #d7dfec;
+  border: 1px solid var(--border-strong);
   border-radius: 18px;
-  background: white;
+  background: var(--white);
   box-shadow: var(--shadow);
 }
 
@@ -230,7 +254,7 @@ a {
   min-height: 42px;
   padding: 0 14px;
   border-bottom: 1px solid var(--line);
-  background: #f8fafc;
+  background: var(--surface-gray);
 }
 
 .dot {
@@ -239,13 +263,13 @@ a {
   border-radius: 50%;
 }
 
-.red-dot { background: #f97066; }
-.yellow-dot { background: #fdb022; }
-.green-dot { background: #32d583; }
+.red-dot { background: var(--dot-red); }
+.yellow-dot { background: var(--dot-yellow); }
+.green-dot { background: var(--dot-green); }
 
 .browser-title {
   margin-left: 8px;
-  color: #667085;
+  color: var(--muted-soft);
   font-size: 12px;
   font-weight: 600;
 }
@@ -298,7 +322,7 @@ a {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fbfcfe;
+  background: var(--surface);
 }
 
 .dashboard-kpis span {
@@ -314,12 +338,12 @@ a {
 }
 
 .critical-kpi {
-  border-color: #fecdca !important;
+  border-color: var(--red-line) !important;
   background: var(--red-soft) !important;
 }
 
 .critical-kpi strong {
-  color: #b42318;
+  color: var(--red-strong);
 }
 
 .dashboard-label {
@@ -338,12 +362,12 @@ a {
 }
 
 .overdue-card {
-  border-color: #fecdca;
+  border-color: var(--red-line);
   background: var(--red-soft);
 }
 
 .neutral-card {
-  background: #f8fbff;
+  background: var(--surface-blue);
 }
 
 .invoice-value {
@@ -373,10 +397,10 @@ a {
   bottom: 0;
   width: min(320px, 80%);
   padding: 16px;
-  border: 1px solid #c7d7fe;
+  border: 1px solid var(--blue-line-soft);
   border-radius: 12px;
-  background: white;
-  box-shadow: 0 14px 35px rgba(16, 24, 40, 0.13);
+  background: var(--white);
+  box-shadow: var(--shadow-float);
   font-size: 12px;
 }
 
@@ -389,7 +413,7 @@ a {
 
 .mail-preview p {
   margin: 10px 0 0;
-  color: #475467;
+  color: var(--ink-soft);
   line-height: 1.45;
 }
 
@@ -435,7 +459,7 @@ a {
 .plan-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: white;
+  background: var(--white);
 }
 
 .pain-grid article {
@@ -469,7 +493,7 @@ a {
 }
 
 .how-section {
-  border-image: linear-gradient(180deg, #eff2f6 0 1px, #fbfcfe 1px) fill 0 / 0 / 0 100vmax;
+  border-image: linear-gradient(180deg, var(--section-line) 0 1px, var(--surface) 1px) fill 0 / 0 / 0 100vmax;
 }
 
 .steps article {
@@ -484,7 +508,7 @@ a {
   place-items: center;
   border-radius: 50%;
   background: var(--blue);
-  color: white;
+  color: var(--white);
   font-size: 13px;
   font-weight: 800;
 }
@@ -526,9 +550,9 @@ a {
 
 .email-card {
   padding: 22px;
-  border: 1px solid #d7dfec;
+  border: 1px solid var(--border-strong);
   border-radius: 17px;
-  background: white;
+  background: var(--white);
   box-shadow: var(--shadow);
 }
 
@@ -563,7 +587,7 @@ a {
 
 .email-body {
   padding-top: 10px;
-  color: #475467;
+  color: var(--ink-soft);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -575,7 +599,7 @@ a {
 .plans-section {
   padding-top: 95px;
   padding-bottom: 95px;
-  border-image: linear-gradient(#fbfcfe, #fbfcfe) fill 0 / 0 / 0 100vmax;
+  border-image: linear-gradient(var(--surface), var(--surface)) fill 0 / 0 / 0 100vmax;
 }
 
 .plans-grid {
@@ -626,7 +650,7 @@ a {
 
 .plan-card li {
   margin: 10px 0;
-  color: #475467;
+  color: var(--ink-soft);
   font-size: 14px;
 }
 
@@ -638,41 +662,41 @@ a {
 }
 
 .button-outline-dark {
-  border: 1px solid #98a2b3;
-  background: white;
+  border: 1px solid var(--border-neutral);
+  background: var(--white);
   color: var(--ink);
   box-shadow: none;
 }
 
 .button-outline-dark:hover {
-  background: #f9fafb;
+  background: var(--surface-hover);
 }
 
 .pro-plan {
   border-color: var(--blue-dark);
   background: var(--blue-dark);
-  color: white;
+  color: var(--white);
 }
 
 .pro-plan .plan-name,
 .pro-plan .price span,
 .pro-plan .plan-description,
 .pro-plan li {
-  color: #dbe6ff;
+  color: var(--on-blue-muted);
 }
 
 .pro-plan li::before {
-  color: #84adff;
+  color: var(--on-blue-accent);
 }
 
 .button-light {
-  background: white;
+  background: var(--white);
   color: var(--blue-dark);
   box-shadow: none;
 }
 
 .button-light:hover {
-  background: #eff6ff;
+  background: var(--blue-tint);
 }
 
 .faq-section {
@@ -711,7 +735,7 @@ a {
   padding: 32px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #fbfcfe;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -735,13 +759,13 @@ a {
 .request-form input,
 .request-form select,
 .request-form textarea {
-  border: 1px solid #ccd5e1;
+  border: 1px solid var(--border-input);
   border-radius: 10px;
   padding: 11px 13px;
   font: inherit;
   font-weight: 500;
   color: var(--ink);
-  background: white;
+  background: var(--white);
 }
 
 .request-form textarea {
@@ -799,14 +823,18 @@ a {
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #fbfcfe;
+  background: var(--surface);
   text-align: center;
 }
 
 .trust-grid .icon-box {
   margin: 0 auto 14px;
-  font-size: 18px;
   background: var(--blue-soft);
+}
+
+.icon-box svg {
+  width: 20px;
+  height: 20px;
 }
 
 .trust-grid p {
@@ -825,13 +853,13 @@ a {
 .final-cta {
   max-width: none;
   padding: 90px 24px;
-  background: linear-gradient(135deg, #0f3d87 0%, #155eef 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+  color: var(--white);
   text-align: center;
 }
 
 .final-cta .eyebrow {
-  color: #eef4ff;
+  color: var(--on-blue);
 }
 
 .final-cta h2 {
@@ -842,7 +870,7 @@ a {
 
 .final-cta > p:not(.eyebrow) {
   margin: 16px 0 27px;
-  color: #eef4ff;
+  color: var(--on-blue);
   font-size: 18px;
 }
 
