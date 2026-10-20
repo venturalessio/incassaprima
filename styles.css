@@ -689,6 +689,29 @@ a {
   color: var(--on-blue-accent);
 }
 
+.plan-badge {
+  position: absolute;
+  top: 26px;
+  right: 30px;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pro-plan .plan-note {
+  color: var(--on-blue-muted);
+}
+
 .button-light {
   background: var(--white);
   color: var(--blue-dark);
