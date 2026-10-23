@@ -8,6 +8,7 @@ Scadenzario fatture e solleciti per artigiani e micro-imprese.
 
 ## Contenuto
 - `index.html`, `styles.css`: landing page pubblica (i font sono caricati nei `<link>` di ogni pagina, non dal CSS)
+- `about.html` (servita come `/about`): pagina Chi siamo
 - `privacy.html`, `termini.html`, `404.html`: pagine legali e pagina di errore
 - `app/index.html`, `app/app.js`, `app/lib/`: l'app (scadenzario, solleciti, analisi incassi)
 - `manifest.webmanifest`, `service-worker.js`, `icons/`: file della PWA
