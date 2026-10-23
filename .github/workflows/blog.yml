@@ -27,6 +27,7 @@ jobs:
         env:
           HEYCATCH_API_KEY: ${{ secrets.HEYCATCH_API_KEY }}
       - name: Pubblica se qualcosa è cambiato
+        id: publish
         run: |
           if [ -z "$(git status --porcelain -- blog sitemap.xml index.html)" ]; then
             echo "Nessun articolo nuovo."
@@ -37,3 +38,7 @@ jobs:
           git add blog sitemap.xml index.html
           git commit -m "Blog: articoli aggiornati da HeyCatch"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Avvisa IndexNow
+        if: steps.publish.outputs.changed == 'true'
+        run: sleep 90 && node scripts/indexnow.mjs
