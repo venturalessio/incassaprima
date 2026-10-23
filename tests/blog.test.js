@@ -74,6 +74,21 @@ test('pagina articolo: un solo h1, canonical assoluto, descrizione solo nei meta
   assert.ok(!html.includes('hck_'));
 });
 
+test('articolo: briciole di pane e "Leggi anche" con parole chiave in comune prima', () => {
+  const others = [
+    { slug: 'recente', title: 'Recente', keywords: ['iva'] },
+    { slug: 'simile', title: 'Simile', keywords: ['Sollecito'] },
+    article
+  ];
+  const html = renderArticle({ ...article, keywords: ['sollecito'] }, others);
+  assert.ok(html.includes('"@type":"BreadcrumbList"'));
+  assert.ok(html.includes('<a href="/">Home</a>'));
+  const related = html.slice(html.indexOf('Leggi anche'));
+  assert.ok(related.indexOf('/blog/simile') < related.indexOf('/blog/recente'));
+  assert.ok(!related.includes(`/blog/${article.slug}"`));
+  assert.ok(related.includes('/scadenzario-excel-vs-incassaprima'));
+});
+
 test('articolo in un\'altra lingua: lang sul contenitore', () => {
   assert.ok(renderArticle({ ...article, language: 'en' }).includes('<article class="blog-article" lang="en">'));
   assert.ok(renderArticle({ ...article, language: 'ar' }).includes('lang="ar" dir="rtl"'));

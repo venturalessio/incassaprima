@@ -89,7 +89,7 @@ async function writeSite(articles) {
 
   await writeFile(join(BLOG_DIR, 'index.html'), renderIndex(articles));
   for (const article of articles) {
-    await writeFile(join(BLOG_DIR, `${article.slug}.html`), renderArticle(article));
+    await writeFile(join(BLOG_DIR, `${article.slug}.html`), renderArticle(article, articles));
   }
 
   const lastmod = articles.map((article) => String(article.updated || article.published || '').slice(0, 10)).sort().pop() || '';

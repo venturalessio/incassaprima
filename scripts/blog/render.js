@@ -207,7 +207,55 @@ ${list}`
   });
 }
 
-export function renderArticle(article) {
+// "Leggi anche": prima gli articoli che condividono più parole chiave, poi i più recenti.
+export function relatedArticles(article, all, limit = 4) {
+  const own = new Set((article.keywords || []).map((word) => String(word).toLowerCase()));
+  return all
+    .filter((other) => other.slug !== article.slug && isSafeSlug(other.slug))
+    .map((other, index) => ({
+      other,
+      index,
+      shared: (other.keywords || []).filter((word) => own.has(String(word).toLowerCase())).length
+    }))
+    .sort((a, b) => b.shared - a.shared || a.index - b.index)
+    .slice(0, limit)
+    .map(({ other }) => other);
+}
+
+// Guide fisse del sito: compaiono sempre, così nessun articolo resta senza link.
+const GUIDES = [
+  { href: '/scadenzario-excel-vs-incassaprima', title: 'Scadenzario Excel o IncassaPrima: quando conviene cambiare' },
+  { href: '/about', title: 'Chi c’è dietro IncassaPrima' }
+];
+
+function relatedBlock(article, all) {
+  const links = [
+    ...relatedArticles(article, all).map((other) => ({ href: `/blog/${other.slug}`, title: other.title })),
+    ...GUIDES
+  ];
+  return `      <nav class="blog-related" aria-label="Leggi anche">
+        <h2>Leggi anche</h2>
+        <ul>
+${links.map((link) => `          <li><a href="${escapeHtml(link.href)}">${escapeHtml(link.title)}</a></li>`).join('\n')}
+        </ul>
+      </nav>
+`;
+}
+
+function breadcrumbJsonLd(article, canonical) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE}/` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog/` },
+      { '@type': 'ListItem', position: 3, name: String(article.title ?? ''), item: canonical }
+    ]
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+export function renderArticle(article, all = []) {
   const canonical = articleUrl(article.slug);
   const clean = sanitizeArticleHtml(article.content_html);
   const language = typeof article.language === 'string' ? article.language.toLowerCase() : SITE_LANG;
@@ -225,15 +273,17 @@ export function renderArticle(article) {
     canonical,
     ogType: 'article',
     showBlogLink: true,
-    head: jsonLdScript(article.jsonLd, canonical) ? `  ${jsonLdScript(article.jsonLd, canonical)}\n` : '',
+    head: `${jsonLdScript(article.jsonLd, canonical) ? `  ${jsonLdScript(article.jsonLd, canonical)}\n` : ''}  ${breadcrumbJsonLd(article, canonical)}\n`,
     body: `    <article class="blog-article"${langAttrs}>
-      <a class="blog-back" href="/blog/">← Tutti gli articoli</a>
+      <nav class="breadcrumb" aria-label="Percorso">
+        <a href="/">Home</a> <span aria-hidden="true">›</span> <a href="/blog/">Blog</a> <span aria-hidden="true">›</span> <span aria-current="page">${escapeHtml(article.title)}</span>
+      </nav>
       <h1 class="blog-title">${escapeHtml(article.title)}</h1>
       <p class="blog-meta">${meta(article)}</p>
 ${imageTag}      <div class="prose">
 ${withTableOfContents(clean)}
       </div>
-      <aside class="blog-cta">
+${relatedBlock(article, all)}      <aside class="blog-cta">
         <p><strong>Hai fatture da incassare?</strong> Con IncassaPrima vedi chi sollecitare oggi e prepari l’email in un clic. Piano base gratuito, senza registrazione né carta.</p>
         <a class="button" href="/app/">Apri lo scadenzario gratis</a>
       </aside>
