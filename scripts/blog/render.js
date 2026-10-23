@@ -171,6 +171,7 @@ ${body}
     <div class="footer-links">
       <a href="/app/">Apri l’app</a>
       <a href="/about">Chi siamo</a>
+      <a href="/scadenzario-excel-vs-incassaprima">Excel vs IncassaPrima</a>
       <a href="/privacy.html">Privacy</a>
       <a href="/termini.html">Termini di servizio</a>
       <a href="mailto:info@incassaprima.it">Contatti</a>

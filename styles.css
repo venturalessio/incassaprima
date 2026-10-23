@@ -1229,3 +1229,55 @@ a {
     font-size: 17px;
   }
 }
+
+.faq-more {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.faq-more a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+  .prose table.compare,
+  .prose table.compare tbody,
+  .prose table.compare tr,
+  .prose table.compare th,
+  .prose table.compare td {
+    display: block;
+    width: auto;
+  }
+
+  .prose table.compare thead {
+    display: none;
+  }
+
+  .prose table.compare tr {
+    margin-bottom: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .prose table.compare th,
+  .prose table.compare td {
+    border: 0;
+  }
+
+  .prose table.compare td + td {
+    border-top: 1px solid var(--line);
+  }
+
+  .prose table.compare td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+}
