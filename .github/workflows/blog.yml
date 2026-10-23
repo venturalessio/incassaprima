@@ -1,0 +1,39 @@
+name: Blog
+
+# Rigenera /blog/ con gli articoli di HeyCatch. La chiave sta nel segreto
+# HEYCATCH_API_KEY del repository, mai nei file del sito.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blog
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: node scripts/build-blog.mjs
+        env:
+          HEYCATCH_API_KEY: ${{ secrets.HEYCATCH_API_KEY }}
+      - name: Pubblica se qualcosa è cambiato
+        run: |
+          if [ -z "$(git status --porcelain -- blog sitemap.xml index.html)" ]; then
+            echo "Nessun articolo nuovo."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blog sitemap.xml index.html
+          git commit -m "Blog: articoli aggiornati da HeyCatch"
+          git push

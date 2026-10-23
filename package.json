@@ -4,5 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "sanitize-html": "2.18.0"
   }
 }
