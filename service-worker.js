@@ -1,4 +1,4 @@
-const CACHE = 'incassaprima-v8';
+const CACHE = 'incassaprima-v9';
 
 const ASSETS = [
   './',
