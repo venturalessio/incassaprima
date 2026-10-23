@@ -1,4 +1,4 @@
-const CACHE = 'incassaprima-v5';
+const CACHE = 'incassaprima-v6';
 
 const ASSETS = [
   './',
@@ -44,7 +44,8 @@ self.addEventListener('fetch', (event) => {
   if (
     request.method !== 'GET' ||
     url.protocol !== 'http:' && url.protocol !== 'https:' ||
-    url.origin !== self.location.origin
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/blog')
   ) {
     return;
   }
