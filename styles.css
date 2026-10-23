@@ -1204,6 +1204,35 @@ a {
   font-size: 16px;
 }
 
+.breadcrumb {
+  margin-bottom: 18px;
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.breadcrumb a {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.blog-related {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.blog-related h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.blog-related ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
 .blog-cta {
   margin-top: 48px;
   padding: 24px;
