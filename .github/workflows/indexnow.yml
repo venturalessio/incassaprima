@@ -1,0 +1,21 @@
+name: IndexNow
+
+# Avvisa i motori di ricerca quando cambiano le pagine del sito.
+# I commit del blog fatti dal bot non avviano questo workflow: li avvisa blog.yml.
+on:
+  push:
+    branches: [main]
+    paths: ['**.html', 'sitemap.xml']
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Aspetta che GitHub Pages pubblichi
+        run: sleep 90
+      - run: node scripts/indexnow.mjs
