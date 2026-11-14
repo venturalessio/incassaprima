@@ -24,12 +24,7 @@ Ogni push su `main` va online in pochi minuti.
 Quando cambi `styles.css`, `index.html` o i file dell'app, aumenta il numero di `CACHE` in `service-worker.js`: altrimenti chi ha già aperto il sito continua a vedere la versione salvata.
 
 ## Blog
-Gli articoli li scrive HeyCatch. Il workflow `.github/workflows/blog.yml` gira ogni 30 minuti (o a mano da Actions → Blog → Run workflow), legge gli articoli dall'API di HeyCatch con `scripts/build-blog.mjs` e pubblica su `main` solo se qualcosa è cambiato:
-- `blog/index.html` (elenco) e `blog/<slug>.html` (articolo, raggiungibile come `/blog/<slug>`)
-- le voci del blog in `sitemap.xml`
-- il link "Blog" nel menu della home, che compare solo quando c'è almeno un articolo
-
-La chiave sta nel segreto `HEYCATCH_API_KEY` del repository (Settings → Secrets and variables → Actions), mai nei file. Le pagine del blog non vengono salvate dal service worker, così i nuovi articoli si vedono subito.
+Spento il 14 novembre 2026, quando è stato disdetto HeyCatch. Restano `scripts/build-blog.mjs` e `scripts/blog/render.js`, con i loro test, se un giorno si vuole riattivare il blog: basta rimettere un workflow che lanci lo script con la chiave nel segreto `HEYCATCH_API_KEY`.
 
 ## Test
 ```
