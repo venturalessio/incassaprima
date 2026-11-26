@@ -1,9 +1,11 @@
-const CACHE = 'incassaprima-v11';
+const CACHE = 'incassaprima-v12';
 
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './fonts/dm-sans-latin.woff2',
+  './fonts/manrope-latin.woff2',
   './privacy.html',
   './manifest.webmanifest',
   './app/',
