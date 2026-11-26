@@ -125,9 +125,6 @@ function layout({ title, description, canonical, ogType, head = '', body, showBl
   <meta name="theme-color" content="#0f3d87">
   <link rel="canonical" href="${escapeHtml(canonical)}">
   <link rel="icon" href="/icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
   <meta property="og:type" content="${ogType}">
   <meta property="og:locale" content="it_IT">
